@@ -1,0 +1,4 @@
+project_id = "fmcsresbwnjdfwpoklwg"
+
+[functions.chat-mentor]
+verify_jwt = false
