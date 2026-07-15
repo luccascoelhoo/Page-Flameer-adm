@@ -2,7 +2,13 @@
 
 function escapeCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const str = String(value);
+  let str = String(value);
+  // Formula-injection guard: user-controlled text (names, titles) starting
+  // with =, +, -, @ or tab executes as a formula in Excel/Sheets. Neutralise
+  // with a leading apostrophe (rendered as plain text by spreadsheet apps).
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (/[",\n\r]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }

@@ -219,7 +219,11 @@ export function useUserHealthSnapshot(userId: string | null) {
         sb.from('profiles').select('id, name, avatar_url').eq('id', userId).single(),
         sb
           .from('user_health_daily')
-          .select('*')
+          // explicit columns (never '*'): keeps sensitive additions out of
+          // coach-facing reads by default
+          .select(
+            'day, readiness_score, readiness_band, readiness_flags, resting_hr, hrv, hrv_method, vo2max, respiratory_rate, spo2, sleep_total_min, time_in_bed_min, sleep_deep_min, sleep_rem_min, sleep_efficiency, steps, active_energy_kcal, srpe_load, synced_at'
+          )
           .eq('user_id', userId)
           .gte('day', fromIso)
           .order('day', { ascending: true }),
