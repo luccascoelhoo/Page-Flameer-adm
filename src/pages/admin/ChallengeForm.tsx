@@ -16,7 +16,9 @@ import {
   Award,
   AlertTriangle,
   FolderOpen,
-  X
+  X,
+  Copy,
+  CalendarRange
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -347,6 +349,47 @@ export default function ChallengeForm() {
       const copy = [...prev];
       copy[idx] = { ...copy[idx], [key]: val };
       return copy;
+    });
+  };
+
+  // ── Periodização (mesociclos por semana via metadata.week_number) ──────────
+  const weekOf = (w: LocalWorkout) => w.metadata?.week_number ?? 1;
+
+  /** Treinos ordenados por semana preservando o índice original (handlers). */
+  const indexedByWeek = React.useMemo(() => {
+    const arr = workouts.map((w, wIdx) => ({ w, wIdx }));
+    arr.sort((a, b) => (a.w.metadata?.week_number ?? 1) - (b.w.metadata?.week_number ?? 1) || a.wIdx - b.wIdx);
+    return arr;
+  }, [workouts]);
+
+  const programmedWeeks = React.useMemo(
+    () => new Set(workouts.map(weekOf)).size,
+    [workouts]
+  );
+  const expectedWeeks = Math.max(1, Math.ceil((durationDays || 7) / 7));
+
+  const addWorkoutToWeek = (week: number) => {
+    setWorkouts(prev => [
+      ...prev,
+      { title: 'Treino A', duration_minutes: 45, focus: 'Hipertrofia', days: [], exercises: [], metadata: { week_number: week } },
+    ]);
+  };
+
+  /** Clona todos os treinos da semana para a semana seguinte (progressão). */
+  const duplicateWeek = (week: number) => {
+    setWorkouts(prev => {
+      const clones = prev
+        .filter(w => weekOf(w) === week)
+        .map(w => {
+          const clone = JSON.parse(JSON.stringify(w)) as LocalWorkout;
+          clone.metadata = { ...(clone.metadata ?? {}), week_number: week + 1 };
+          return clone;
+        });
+      return [...prev, ...clones];
+    });
+    toast({
+      title: `Semana ${week} duplicada`,
+      description: `Treinos copiados para a semana ${week + 1} — ajuste cargas/reps para a progressão.`,
     });
   };
 
@@ -1517,10 +1560,64 @@ export default function ChallengeForm() {
               </div>
             </div>
 
+            {/* Resumo da periodização */}
+            {workouts.length > 0 && (
+              <div className="flex flex-wrap items-center gap-3 bg-secondary/30 border border-border rounded-lg px-4 py-2.5">
+                <CalendarRange className="w-4 h-4 text-primary shrink-0" />
+                <span className="text-xs font-semibold text-foreground">
+                  Periodização: {programmedWeeks} semana(s) programada(s)
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  desafio de {durationDays} dias ≈ {expectedWeeks} semana(s)
+                </span>
+                {programmedWeeks < expectedWeeks && (
+                  <span className="text-[11px] font-semibold text-amber-600 inline-flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    faltam {expectedWeeks - programmedWeeks} semana(s) de treino — use "Duplicar" para progredir
+                  </span>
+                )}
+              </div>
+            )}
+
             {workouts.length > 0 ? (
               <div className="space-y-8">
-                {workouts.map((w, wIdx) => (
-                  <div key={wIdx} className="border border-border rounded-xl p-6 bg-secondary/15 relative space-y-4">
+                {indexedByWeek.map(({ w, wIdx }, pos) => (
+                  <React.Fragment key={wIdx}>
+                    {(pos === 0 || weekOf(indexedByWeek[pos - 1].w) !== weekOf(w)) && (
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 first:pt-0 -mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/15 px-2.5 py-1 rounded-full">
+                            Semana {weekOf(w)}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {workouts.filter((x) => weekOf(x) === weekOf(w)).length} treino(s)
+                          </span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[11px] gap-1"
+                            onClick={() => addWorkoutToWeek(weekOf(w))}
+                          >
+                            <Plus className="w-3 h-3" />
+                            Treino nesta semana
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-[11px] gap-1 text-primary hover:text-primary"
+                            onClick={() => duplicateWeek(weekOf(w))}
+                          >
+                            <Copy className="w-3 h-3" />
+                            Duplicar p/ semana {weekOf(w) + 1}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="border border-border rounded-xl p-6 bg-secondary/15 relative space-y-4">
                     <Button 
                       type="button" 
                       variant="ghost" 
@@ -1725,7 +1822,8 @@ export default function ChallengeForm() {
                         <p className="text-xs text-muted-foreground italic">Sem exercícios cadastrados neste split.</p>
                       )}
                     </div>
-                  </div>
+                    </div>
+                  </React.Fragment>
                 ))}
               </div>
             ) : (

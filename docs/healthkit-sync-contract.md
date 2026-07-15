@@ -138,9 +138,19 @@ try await supabase
     .execute()
 ```
 
-## Paridade do score
+## Paridade do score — ✅ implementada
 
-O motor de prontidão é `src/lib/admin/readiness.ts` (puro/determinístico) —
-portar 1:1 para Swift se o app quiser exibir o mesmo número offline. O app
-**pode** gravar `readiness_score/band` como cache, mas o painel recalcula do
-zero (o valor do device é tratado como dica, não como verdade).
+O motor foi portado 1:1 para Swift em
+`Flameer/Core/Servicos/ReadinessEngine.swift`, com **paridade numérica
+verificada** contra `src/lib/admin/readiness.ts` (mesmos casos sintéticos:
+72,2/verde · 39,3/vermelho+doença · ACWR 1,93 · pesos renormalizados
+0,471/0,235/0,294 · score nulo p/ linha de base insuficiente).
+
+Fluxo: após cada sync, `HealthKitSyncService.refreshReadiness()` lê os 60
+dias de `user_health_daily`, computa o score e **grava o cache**
+(`readiness_score/band/flags`) na linha mais recente — as RPCs de
+distribuição/tendência do painel leem essa coluna. O `BioFeedbackEngine`
+usa o motor completo quando há histórico e cai no composto simples
+(HRV 60%/Sono 40%) enquanto a linha de base é construída. O painel continua
+recalculando do zero — o cache do device alimenta agregados, não substitui
+a verdade.
