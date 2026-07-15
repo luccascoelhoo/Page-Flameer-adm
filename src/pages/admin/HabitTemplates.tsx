@@ -126,14 +126,14 @@ export default function HabitTemplates() {
 
       if (payload.id) {
         // Update
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('habits')
           .update(habitData)
           .eq('id', payload.id);
         return { data, error };
       } else {
         // Insert
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('habits')
           .insert([habitData]);
         return { data, error };

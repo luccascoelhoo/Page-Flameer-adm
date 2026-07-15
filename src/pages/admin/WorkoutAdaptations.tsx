@@ -41,7 +41,7 @@ export default function WorkoutAdaptations() {
       const { data: { session } } = await supabase.auth.getSession();
       const reviewerId = session?.user?.id;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('workout_adaptations')
         .update({
           review_status: status,

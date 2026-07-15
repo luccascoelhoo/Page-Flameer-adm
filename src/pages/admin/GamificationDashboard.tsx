@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   Award, 
   Plus, 
+  Edit,
   Trash2, 
   Loader2, 
   Trophy, 
@@ -129,14 +130,14 @@ export default function GamificationDashboard() {
 
       if (payload.id) {
         // Update
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('badges')
           .update(badgeData)
           .eq('id', payload.id);
         return { data, error };
       } else {
         // Insert
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('badges')
           .insert([badgeData]);
         return { data, error };

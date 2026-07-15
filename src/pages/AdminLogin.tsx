@@ -29,7 +29,7 @@ export default function AdminLogin() {
 
       if (session) {
         // Verify role
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await (supabase as any)
           .from('profiles')
           .select('role, name')
           .eq('id', session.user.id)
@@ -39,7 +39,7 @@ export default function AdminLogin() {
 
         if (profile?.role === 'admin' || profile?.role === 'professional') {
           toast({
-            title: `Bem-vindo, ${profile.name}!`,
+            title: `Bem-vindo, ${profile?.name || 'Administrador'}!`,
             description: "Acesso autorizado ao Painel de Gerenciamento.",
             variant: "default",
           });

@@ -15,12 +15,21 @@ import {
   Info,
   Award,
   AlertTriangle,
-  FolderOpen
+  FolderOpen,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -32,6 +41,7 @@ interface LocalHabit {
   kind: 'units' | 'quantity' | 'single';
   unit?: string;
   target: number;
+  metadata?: any;
 }
 
 interface LocalSet {
@@ -44,6 +54,9 @@ interface LocalExercise {
   muscle: string;
   rest_seconds: number;
   sets: LocalSet[];
+  metadata?: {
+    informacoes_adicionais?: string;
+  };
 }
 
 interface LocalWorkout {
@@ -52,6 +65,15 @@ interface LocalWorkout {
   focus: string;
   days: number[];
   exercises: LocalExercise[];
+  metadata?: {
+    week_number?: number;
+    video_url?: string;
+    hiit_protocol?: {
+      aquecimento?: string;
+      treino_hiit?: string;
+      resfriamento?: string;
+    };
+  };
 }
 
 interface LocalMealItem {
@@ -67,11 +89,24 @@ interface LocalMeal {
   carbs: number;
   fat: number;
   items: LocalMealItem[];
+  metadata?: {
+    observacoes?: string;
+    substituicoes?: string[];
+  };
 }
 
 interface LocalDiet {
   title: string;
   meals: LocalMeal[];
+  metadata?: {
+    patient_name?: string;
+    prescription_date?: string;
+    professional_name?: string;
+    professional_role?: string;
+    professional_crn?: string;
+    shopping_list?: string[];
+    nutrient_report?: any;
+  };
 }
 
 export default function ChallengeForm() {
@@ -92,6 +127,9 @@ export default function ChallengeForm() {
   const [iconName, setIconName] = useState('trophy');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [shareCode, setShareCode] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [challengeType, setChallengeType] = useState<'individual' | 'group_private' | 'group_public'>('group_public');
+  const [maxParticipants, setMaxParticipants] = useState(50);
   const [isFeatured, setIsFeatured] = useState(false);
 
   // Tab 2: Habits
@@ -102,6 +140,13 @@ export default function ChallengeForm() {
 
   // Tab 4: Diet
   const [diets, setDiets] = useState<LocalDiet[]>([]);
+
+  // Import modal states
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importType, setImportType] = useState<'diet' | 'workout'>('diet');
+  const [importText, setImportText] = useState('');
+  const [importFormat, setImportFormat] = useState<'json' | 'spreadsheet' | 'pdf'>('json');
+  const [importMode, setImportMode] = useState<'replace' | 'append'>('replace');
 
   // Fetch all package details if editing
   const { data: pkgData, isLoading } = useSupabaseQuery<any>(
@@ -115,17 +160,17 @@ export default function ChallengeForm() {
           *,
           habits(*),
           workouts(
-            id, title, duration_minutes, focus, is_template,
+            id, title, duration_minutes, focus, is_template, metadata,
             workout_days(day_of_week),
             exercises(
-              id, name, muscle, rest_seconds, order_index,
+              id, name, muscle, rest_seconds, order_index, metadata,
               exercise_sets(id, reps, weight, order_index)
             )
           ),
           diets(
-            id, title, is_template,
+            id, title, is_template, metadata,
             meals(
-              id, name, time, calories, protein, carbs, fat, order_index,
+              id, name, time, calories, protein, carbs, fat, order_index, metadata,
               meal_items(id, name, quantity, order_index)
             )
           )
@@ -186,6 +231,9 @@ export default function ChallengeForm() {
       setIconName(pkgData.icon_name || 'trophy');
       setCoverImageUrl(pkgData.cover_image_url || '');
       setShareCode(pkgData.share_code || '');
+      setInviteCode(pkgData.invite_code || pkgData.share_code || '');
+      setChallengeType(pkgData.challenge_type || 'group_public');
+      setMaxParticipants(pkgData.max_participants || 50);
       setIsFeatured(pkgData.is_featured || false);
 
       // Load Habits
@@ -195,7 +243,8 @@ export default function ChallengeForm() {
         color: h.color,
         kind: h.kind,
         unit: h.unit || '',
-        target: Number(h.target) || 1
+        target: Number(h.target) || 1,
+        metadata: h.metadata || {}
       })) || [];
       setHabits(mappedHabits);
 
@@ -205,12 +254,14 @@ export default function ChallengeForm() {
         duration_minutes: w.duration_minutes || 45,
         focus: w.focus || 'Hipertrofia',
         days: w.workout_days?.map((d: any) => d.day_of_week) || [],
+        metadata: w.metadata || {},
         exercises: w.exercises
           ?.sort((a: any, b: any) => a.order_index - b.order_index)
           ?.map((ex: any) => ({
             name: ex.name,
             muscle: ex.muscle,
             rest_seconds: ex.rest_seconds || 60,
+            metadata: ex.metadata || {},
             sets: ex.exercise_sets
               ?.sort((a: any, b: any) => a.order_index - b.order_index)
               ?.map((s: any) => ({
@@ -224,6 +275,7 @@ export default function ChallengeForm() {
       // Load Diets
       const mappedDiets = pkgData.diets?.map((d: any) => ({
         title: d.title,
+        metadata: d.metadata || {},
         meals: d.meals
           ?.sort((a: any, b: any) => a.order_index - b.order_index)
           ?.map((m: any) => ({
@@ -233,6 +285,7 @@ export default function ChallengeForm() {
             protein: Number(m.protein) || 0,
             carbs: Number(m.carbs) || 0,
             fat: Number(m.fat) || 0,
+            metadata: m.metadata || {},
             items: m.meal_items
               ?.sort((a: any, b: any) => a.order_index - b.order_index)
               ?.map((item: any) => ({
@@ -386,6 +439,484 @@ export default function ChallengeForm() {
     });
   };
 
+  // Metadata Operations
+  const updateWorkoutMetadata = (idx: number, subkey: string, val: any) => {
+    setWorkouts(prev => {
+      const copy = [...prev];
+      const currentMeta = copy[idx].metadata || {};
+      copy[idx] = { 
+        ...copy[idx], 
+        metadata: { ...currentMeta, [subkey]: val } 
+      };
+      return copy;
+    });
+  };
+
+  const updateExerciseMetadata = (wIdx: number, exIdx: number, subkey: string, val: any) => {
+    setWorkouts(prev => {
+      const copy = [...prev];
+      const currentMeta = copy[wIdx].exercises[exIdx].metadata || {};
+      copy[wIdx].exercises[exIdx] = { 
+        ...copy[wIdx].exercises[exIdx], 
+        metadata: { ...currentMeta, [subkey]: val } 
+      };
+      return copy;
+    });
+  };
+
+  const updateMealMetadata = (mIdx: number, subkey: string, val: any) => {
+    setDiets(prev => {
+      const copy = [...prev];
+      const currentMeta = copy[0].meals[mIdx].metadata || {};
+      copy[0].meals[mIdx] = { 
+        ...copy[0].meals[mIdx], 
+        metadata: { ...currentMeta, [subkey]: val } 
+      };
+      return copy;
+    });
+  };
+
+  const updateDietMetadata = (subkey: string, val: any) => {
+    setDiets(prev => {
+      const copy = [...prev];
+      const currentMeta = copy[0].metadata || {};
+      copy[0] = { 
+        ...copy[0], 
+        metadata: { ...currentMeta, [subkey]: val } 
+      };
+      return copy;
+    });
+  };
+
+  // Helper parser for JSON importation
+  const cleanCitation = (str: string) => {
+    if (!str) return '';
+    return str.replace(/\[cite:\s*\d+(?:,\s*\d+)*\]/g, '').trim();
+  };
+
+  const parseDecimal = (str: string) => {
+    if (!str) return 0;
+    const cleaned = cleanCitation(str).replace(/[^\d.,]/g, '').replace(',', '.');
+    return Number(cleaned) || 0;
+  };
+
+  // Parser helpers for Excel, CSV and PDF Text
+  const parseGrid = (text: string): string[][] => {
+    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+    return lines.map(line => {
+      if (line.includes('\t')) {
+        return line.split('\t').map(c => c.trim());
+      }
+      if (line.includes(';')) {
+        return line.split(';').map(c => c.trim());
+      }
+      return line.split(',').map(c => c.trim());
+    });
+  };
+
+  const parseDietSpreadsheet = (text: string): LocalMeal[] => {
+    const grid = parseGrid(text);
+    const parsedMeals: LocalMeal[] = [];
+    
+    for (const row of grid) {
+      if (row.length < 2) continue;
+      const col0Lower = row[0].toLowerCase();
+      if (col0Lower.includes('horár') || col0Lower.includes('hora') || col0Lower.includes('time')) continue;
+      
+      const timeVal = row[0];
+      const nameVal = row[1];
+      const foodsStr = row[2] || '';
+      const kcal = parseDecimal(row[3] || '0');
+      const prot = parseDecimal(row[4] || '0');
+      const carb = parseDecimal(row[5] || '0');
+      const fatVal = parseDecimal(row[6] || '0');
+      
+      const items = foodsStr.split(/[,;\n]/).filter(f => f.trim().length > 0).map(f => {
+        const parts = f.split(':');
+        if (parts.length > 1) {
+          return { name: parts[0].trim(), quantity: parts[1].trim() };
+        }
+        return { name: f.trim(), quantity: '1 porção' };
+      });
+      
+      parsedMeals.push({
+        name: nameVal || 'Refeição',
+        time: timeVal.length === 5 ? `${timeVal}:00` : timeVal,
+        calories: kcal,
+        protein: prot,
+        carbs: carb,
+        fat: fatVal,
+        items
+      });
+    }
+    return parsedMeals;
+  };
+
+  const parseDietFreeText = (text: string): LocalMeal[] => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const parsedMeals: LocalMeal[] = [];
+    let currentMeal: LocalMeal | null = null;
+    const timeRegex = /\b\d{2}:\d{2}\b/;
+    
+    for (const line of lines) {
+      const timeMatch = line.match(timeRegex);
+      if (timeMatch) {
+        if (currentMeal) {
+          parsedMeals.push(currentMeal);
+        }
+        const timeVal = timeMatch[0];
+        let nameVal = line.replace(timeRegex, '').replace(/[-–—]/g, '').trim();
+        if (!nameVal) nameVal = 'Refeição';
+        
+        currentMeal = {
+          name: nameVal,
+          time: `${timeVal}:00`,
+          calories: 300,
+          protein: 20,
+          carbs: 30,
+          fat: 10,
+          items: []
+        };
+      } else if (currentMeal) {
+        const parts = line.split(':');
+        if (parts.length > 1) {
+          currentMeal.items.push({ name: parts[0].trim(), quantity: parts[1].trim() });
+        } else {
+          currentMeal.items.push({ name: line, quantity: '1 porção' });
+        }
+      }
+    }
+    
+    if (currentMeal) {
+      parsedMeals.push(currentMeal);
+    }
+    return parsedMeals;
+  };
+
+  const parseWorkoutSpreadsheet = (text: string): LocalExercise[] => {
+    const grid = parseGrid(text);
+    const exercises: LocalExercise[] = [];
+    
+    for (const row of grid) {
+      if (row.length < 1) continue;
+      const col0Lower = row[0].toLowerCase();
+      if (col0Lower.includes('exercí') || col0Lower.includes('exercise') || col0Lower.includes('nome')) continue;
+      
+      const exName = row[0];
+      const muscleVal = row[1] || 'Geral';
+      const setsCount = Number(row[2]) || 3;
+      const repsText = row[3] || '10';
+      const restSec = parseDecimal(row[4] || '60');
+      const notesVal = row[5] || '';
+      
+      const sets = Array.from({ length: setsCount }, () => ({
+        reps: repsText,
+        weight: '0'
+      }));
+      
+      exercises.push({
+        name: exName,
+        muscle: muscleVal,
+        rest_seconds: restSec,
+        sets,
+        metadata: {
+          informacoes_adicionais: notesVal || undefined
+        }
+      });
+    }
+    return exercises;
+  };
+
+  const parseWorkoutFreeText = (text: string): LocalExercise[] => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const exercises: LocalExercise[] = [];
+    
+    for (const line of lines) {
+      let setsCount = 3;
+      let repsText = '10';
+      let restSec = 60;
+      
+      const setsRepsRegex = /(\d+)\s*(?:x|séries\s+de|sets\s+of)\s*(\d+(?:-\d+)?)/i;
+      const matchSetsReps = line.match(setsRepsRegex);
+      if (matchSetsReps) {
+        setsCount = Number(matchSetsReps[1]) || 3;
+        repsText = matchSetsReps[2];
+      }
+      
+      const restRegex = /(?:descanso|rest|intervalo)\s*[:\-–]?\s*(\d+)\s*(s|seg|min|m)?/i;
+      const matchRest = line.match(restRegex);
+      if (matchRest) {
+        const val = Number(matchRest[1]) || 60;
+        const unit = (matchRest[2] || '').toLowerCase();
+        if (unit.startsWith('m')) {
+          restSec = val * 60;
+        } else {
+          restSec = val;
+        }
+      }
+      
+      let exName = line
+        .replace(setsRepsRegex, '')
+        .replace(restRegex, '')
+        .replace(/[-–—[\]()]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+        
+      if (!exName) exName = 'Exercício';
+      
+      const sets = Array.from({ length: setsCount }, () => ({
+        reps: repsText,
+        weight: '0'
+      }));
+      
+      exercises.push({
+        name: exName,
+        muscle: 'Geral',
+        rest_seconds: restSec,
+        sets,
+        metadata: {
+          informacoes_adicionais: line
+        }
+      });
+    }
+    return exercises;
+  };
+
+  const handleImportSubmit = () => {
+    if (!importText.trim()) {
+      toast({ title: "Campo Vazio", description: "Por favor, cole o texto ou carregue um arquivo.", variant: "destructive" });
+      return;
+    }
+
+    if (importType === 'diet') {
+      let parsedMeals: LocalMeal[] = [];
+      let metadata: any = {};
+      
+      try {
+        if (importFormat === 'json') {
+          const rawData = JSON.parse(importText);
+          const plan = rawData.plano_alimentar;
+          const nutrients = rawData.relatorio_nutrientes;
+          const shopping = rawData.lista_de_compras;
+          
+          if (!plan) {
+            toast({ title: "JSON Inválido", description: "O JSON deve conter a chave plano_alimentar.", variant: "destructive" });
+            return;
+          }
+          
+          parsedMeals = plan.refeicoes.map((ref: any) => {
+            const mealName = cleanCitation(ref.nome);
+            const cleanTime = cleanCitation(ref.horario).replace(/\s*\[.*\]/, '');
+            
+            let calories = 0, protein = 0, carbs = 0, fat = 0;
+            if (nutrients && nutrients.macronutrientes_por_refeicao) {
+              const macro = nutrients.macronutrientes_por_refeicao.find((m: any) => 
+                cleanCitation(m.refeicao).toLowerCase() === mealName.toLowerCase()
+              );
+              if (macro) {
+                calories = parseDecimal(macro.calorias);
+                protein = parseDecimal(macro.proteinas);
+                carbs = parseDecimal(macro.carboidratos);
+                fat = parseDecimal(macro.lipideos);
+              }
+            }
+            
+            const items = (ref.alimentos || []).map((food: string) => {
+              const cleanedFood = cleanCitation(food);
+              const parts = cleanedFood.split(':');
+              if (parts.length > 1) {
+                return { name: parts[0].trim(), quantity: parts[1].trim() };
+              }
+              return { name: cleanedFood, quantity: "1 porção" };
+            });
+            
+            const substitutions = (ref.substituicoes || []).map((sub: string) => cleanCitation(sub));
+            const observacoes = ref.observacoes ? cleanCitation(ref.observacoes) : undefined;
+            
+            return {
+              name: mealName,
+              time: cleanTime.length === 5 ? `${cleanTime}:00` : cleanTime,
+              calories,
+              protein,
+              carbs,
+              fat,
+              items,
+              metadata: { observacoes, substitutions }
+            };
+          });
+          
+          metadata = {
+            patient_name: cleanCitation(plan.paciente),
+            prescription_date: cleanCitation(plan.data_prescricao),
+            professional_name: cleanCitation(plan.profissional?.nome),
+            professional_role: cleanCitation(plan.profissional?.atuacao),
+            professional_crn: cleanCitation(plan.profissional?.registro),
+            shopping_list: shopping?.itens?.map((i: string) => cleanCitation(i)) || [],
+            nutrient_report: nutrients?.micronutrientes_e_gorduras || null
+          };
+        } else if (importFormat === 'spreadsheet') {
+          parsedMeals = parseDietSpreadsheet(importText);
+        } else {
+          parsedMeals = parseDietFreeText(importText);
+        }
+
+        if (parsedMeals.length === 0) {
+          toast({ title: "Nenhum Registro", description: "Não foi possível extrair refeições desse formato.", variant: "destructive" });
+          return;
+        }
+
+        setDiets(prev => {
+          if (importMode === 'replace' || prev.length === 0) {
+            return [{ title: 'Plano Alimentar Geral', meals: parsedMeals, metadata }];
+          } else {
+            const updatedMeals = [...prev[0].meals, ...parsedMeals];
+            const updatedMeta = { ...prev[0].metadata, ...metadata };
+            return [{ ...prev[0], meals: updatedMeals, metadata: updatedMeta }];
+          }
+        });
+        
+        toast({ title: "Importado com sucesso", description: `${parsedMeals.length} refeições inseridas.` });
+        setIsImportModalOpen(false);
+        setImportText('');
+      } catch (err: any) {
+        toast({ title: "Erro na Importação", description: err.message || "Erro ao processar arquivo.", variant: "destructive" });
+      }
+    } else {
+      try {
+        let newWorkouts: LocalWorkout[] = [];
+        
+        if (importFormat === 'json') {
+          const rawData = JSON.parse(importText);
+          let title = "";
+          let focus = "";
+          let videoUrl = "";
+          let cronograma = "";
+          let exercises: LocalExercise[] = [];
+          let hiitProtocol: any = null;
+          
+          if (rawData.treino_abdomen) {
+            const tr = rawData.treino_abdomen;
+            title = cleanCitation(tr.titulo);
+            focus = cleanCitation(tr.foco);
+            videoUrl = cleanCitation(tr.video_instrucional_url || tr.video_instrucional);
+            cronograma = cleanCitation(tr.cronograma_semanal);
+            
+            exercises = (tr.exercicios || []).map((ex: any) => {
+              const name = cleanCitation(ex.name);
+              const muscle = cleanCitation(ex.foco || tr.foco || "Abdômen");
+              const restSec = parseDecimal(ex.descanso_entre_series || "60");
+              const setsCount = Number(ex.series) || 3;
+              const repsText = cleanCitation(ex.repeticoes || "10-12");
+              
+              const sets = Array.from({ length: setsCount }, () => ({
+                reps: repsText,
+                weight: "0"
+              }));
+              
+              return {
+                name,
+                muscle,
+                rest_seconds: restSec,
+                sets,
+                metadata: {
+                  informacoes_adicionais: cleanCitation(ex.informacoes_adicionais)
+                }
+              };
+            });
+          } else if (rawData.treino_cardio) {
+            const tc = rawData.treino_cardio;
+            title = cleanCitation(tc.titulo);
+            focus = cleanCitation(tc.foco);
+            videoUrl = cleanCitation(tc.video_instrucional_url || tc.video_instrucional);
+            cronograma = cleanCitation(tc.cronograma_semanal);
+            
+            hiitProtocol = {
+              aquecimento: tc.protocolo?.aquecimento ? cleanCitation(tc.protocolo.aquecimento) : "",
+              treino_hiit: tc.protocolo?.treino_hiit ? cleanCitation(tc.protocolo.treino_hiit) : "",
+              resfriamento: tc.protocolo?.resfriamento ? cleanCitation(tc.protocolo.resfriamento) : ""
+            };
+            
+            exercises = [{
+              name: cleanCitation(tc.titulo),
+              muscle: "Cardiorrespiratório",
+              rest_seconds: 0,
+              sets: [{ reps: "1", weight: "0" }],
+              metadata: {
+                informacoes_adicionais: `Aquecimento: ${hiitProtocol.aquecimento}. HIIT: ${hiitProtocol.treino_hiit}. Resfriamento: ${hiitProtocol.resfriamento}.`
+              }
+            }];
+          } else {
+            toast({ title: "JSON Inválido", description: "O JSON deve conter treino_abdomen ou treino_cardio.", variant: "destructive" });
+            return;
+          }
+          
+          let weekNumber = 1;
+          const match = title.match(/\d+/);
+          if (match) {
+            weekNumber = Number(match[0]) || 1;
+          }
+          
+          let days: number[] = [];
+          const cronLower = cronograma.toLowerCase();
+          if (cronLower.includes("1") || cronLower.includes("segunda") || cronLower.includes("terça") || cronLower.includes("quarta") || cronLower.includes("quinta") || cronLower.includes("sexta") || cronLower.includes("sábado")) {
+            if (cronLower.includes("1, 3 e 5") || (cronLower.includes("segunda") && cronLower.includes("quarta"))) {
+              days = [0, 2, 4];
+            } else if (cronLower.includes("2, 4 e 6") || (cronLower.includes("terça") && cronLower.includes("quinta"))) {
+              days = [1, 3, 5];
+            }
+          }
+          
+          newWorkouts.push({
+            title,
+            duration_minutes: rawData.treino_abdomen ? 30 : 20,
+            focus,
+            days,
+            exercises,
+            metadata: {
+              week_number: weekNumber,
+              video_url: videoUrl,
+              hiit_protocol: hiitProtocol
+            }
+          });
+        } else {
+          const exercises = importFormat === 'spreadsheet' 
+            ? parseWorkoutSpreadsheet(importText) 
+            : parseWorkoutFreeText(importText);
+            
+          if (exercises.length === 0) {
+            toast({ title: "Nenhum Registro", description: "Não foi possível extrair exercícios.", variant: "destructive" });
+            return;
+          }
+          
+          newWorkouts.push({
+            title: `Treino Importado (${new Date().toLocaleDateString()})`,
+            duration_minutes: 45,
+            focus: 'Geral',
+            days: [0, 2, 4],
+            exercises,
+            metadata: {
+              week_number: 1
+            }
+          });
+        }
+
+        setWorkouts(prev => {
+          if (importMode === 'replace') {
+            return newWorkouts;
+          } else {
+            return [...prev, ...newWorkouts];
+          }
+        });
+        
+        toast({ title: "Treino Importado", description: "Seus treinos foram atualizados com sucesso." });
+        setIsImportModalOpen(false);
+        setImportText('');
+      } catch (err: any) {
+        toast({ title: "Erro na Importação", description: err.message || "Erro ao processar planilha.", variant: "destructive" });
+      }
+    }
+  };
+
   // Zod / Logic Validation
   const validateForm = (): boolean => {
     // 1. Details Validation
@@ -471,7 +1002,7 @@ export default function ChallengeForm() {
   // Atomic save package mutation
   const saveChallengePackage = useSupabaseMutation<any, any>(
     async (payload) => {
-      const { data, error } = await supabase.rpc('save_challenge_package', {
+      const { data, error } = await (supabase as any).rpc('save_challenge_package', {
         p_payload: payload
       });
       return { data, error };
@@ -504,6 +1035,9 @@ export default function ChallengeForm() {
       subtitle: subtitle || null,
       tier,
       visibility,
+      challenge_type: challengeType,
+      max_participants: challengeType === 'group_private' ? Number(maxParticipants) : (challengeType === 'individual' ? 1 : null),
+      invite_code: inviteCode || shareCode,
       category,
       duration_days: Number(durationDays),
       prize: prize || null,
@@ -676,16 +1210,58 @@ export default function ChallengeForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="share_code">Código de Compartilhamento *</Label>
+                <Label htmlFor="challenge_type">Tipo de Desafio</Label>
+                <select
+                  id="challenge_type"
+                  value={challengeType}
+                  onChange={(e: any) => {
+                    const val = e.target.value;
+                    setChallengeType(val);
+                    if (val === 'individual') {
+                      setVisibility('private');
+                    }
+                  }}
+                  className="w-full h-10 px-3.5 py-1.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none"
+                >
+                  <option value="group_public">Grupo Público</option>
+                  <option value="group_private">Grupo Privado</option>
+                  <option value="individual">Individual</option>
+                </select>
+              </div>
+
+              {challengeType === 'group_private' && (
+                <div className="space-y-2">
+                  <Label htmlFor="max_participants">Limite de Atletas (Máx)</Label>
+                  <Input
+                    id="max_participants"
+                    type="number"
+                    min={1}
+                    max={1000}
+                    value={maxParticipants}
+                    onChange={(e) => setMaxParticipants(Number(e.target.value))}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="invite_code">Código de Convite *</Label>
                 <div className="flex gap-2">
                   <Input
-                    id="share_code"
-                    value={shareCode}
-                    onChange={(e) => setShareCode(e.target.value.toUpperCase())}
-                    placeholder="Ex: SECA30"
+                    id="invite_code"
+                    value={inviteCode || shareCode}
+                    onChange={(e) => {
+                      const c = e.target.value.toUpperCase();
+                      setInviteCode(c);
+                      setShareCode(c);
+                    }}
+                    placeholder="Ex: GYMRATS50"
                     required
                   />
-                  <Button type="button" variant="outline" onClick={generateShareCode}>Gerar</Button>
+                  <Button type="button" variant="outline" onClick={() => {
+                    const randomCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+                    setInviteCode(randomCode);
+                    setShareCode(randomCode);
+                  }}>Gerar</Button>
                 </div>
               </div>
 
@@ -825,10 +1401,26 @@ export default function ChallengeForm() {
                 <Dumbbell className="w-5 h-5 text-primary" />
                 Rotina de Treinos (Splits Semanais)
               </h3>
-              <Button type="button" variant="outline" size="sm" onClick={addWorkout} className="gap-1 text-xs">
-                <Plus className="w-3.5 h-3.5" />
-                Adicionar Treino
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setImportType('workout');
+                    setImportFormat('spreadsheet');
+                    setIsImportModalOpen(true);
+                  }}
+                  className="gap-1 text-xs border-primary text-primary hover:bg-primary/5"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  Importar Planilha / PDF / JSON
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={addWorkout} className="gap-1 text-xs">
+                  <Plus className="w-3.5 h-3.5" />
+                  Adicionar Treino
+                </Button>
+              </div>
             </div>
 
             {workouts.length > 0 ? (
@@ -845,8 +1437,8 @@ export default function ChallengeForm() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
 
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      <div className="space-y-1.5">
+                    <div className="grid gap-4 sm:grid-cols-5">
+                      <div className="space-y-1.5 sm:col-span-2">
                         <Label className="text-xs">Título do Treino *</Label>
                         <Input
                           value={w.title}
@@ -864,6 +1456,15 @@ export default function ChallengeForm() {
                         />
                       </div>
                       <div className="space-y-1.5">
+                        <Label className="text-xs">Semana</Label>
+                        <Input
+                          type="number"
+                          value={w.metadata?.week_number || 1}
+                          onChange={(e) => updateWorkoutMetadata(wIdx, 'week_number', Number(e.target.value))}
+                          min={1}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
                         <Label className="text-xs">Minutos</Label>
                         <Input
                           type="number"
@@ -873,6 +1474,32 @@ export default function ChallengeForm() {
                         />
                       </div>
                     </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Vídeo Instrucional (URL)</Label>
+                      <Input
+                        value={w.metadata?.video_url || ''}
+                        onChange={(e) => updateWorkoutMetadata(wIdx, 'video_url', e.target.value)}
+                        placeholder="Ex: https://www.youtube.com/watch?v=..."
+                      />
+                    </div>
+
+                    {w.metadata?.hiit_protocol && (
+                      <div className="grid gap-3 sm:grid-cols-3 bg-primary/5 p-4 rounded-lg border border-primary/10 text-xs">
+                        <div>
+                          <span className="font-bold block text-primary mb-1">Aquecimento:</span>
+                          <span className="text-muted-foreground">{w.metadata.hiit_protocol.aquecimento}</span>
+                        </div>
+                        <div>
+                          <span className="font-bold block text-primary mb-1">HIIT:</span>
+                          <span className="text-muted-foreground">{w.metadata.hiit_protocol.treino_hiit}</span>
+                        </div>
+                        <div>
+                          <span className="font-bold block text-primary mb-1">Resfriamento:</span>
+                          <span className="text-muted-foreground">{w.metadata.hiit_protocol.resfriamento}</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Weekday scheduler */}
                     <div className="space-y-1.5">
@@ -918,7 +1545,7 @@ export default function ChallengeForm() {
                                 <Trash2 className="w-3.5 h-3.5" />
                               </Button>
 
-                              <div className="grid gap-3 sm:grid-cols-3 pr-8">
+                              <div className="grid gap-3 sm:grid-cols-4 pr-8">
                                 <div className="space-y-1">
                                   <Label className="text-[10px]">Exercício *</Label>
                                   <Input
@@ -944,6 +1571,15 @@ export default function ChallengeForm() {
                                     type="number"
                                     value={ex.rest_seconds}
                                     onChange={(e) => updateExercise(wIdx, exIdx, 'rest_seconds', Number(e.target.value))}
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-[10px]">Informações Adicionais / RIR</Label>
+                                  <Input
+                                    value={ex.metadata?.informacoes_adicionais || ''}
+                                    onChange={(e) => updateExerciseMetadata(wIdx, exIdx, 'informacoes_adicionais', e.target.value)}
+                                    placeholder="Ex: RIR 1-3"
                                     className="h-8 text-xs"
                                   />
                                 </div>
@@ -1014,11 +1650,56 @@ export default function ChallengeForm() {
                 <Apple className="w-5 h-5 text-primary" />
                 <h3 className="font-bold text-lg text-foreground">Planejamento Nutricional</h3>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={addMeal} className="gap-1 text-xs">
-                <Plus className="w-3.5 h-3.5" />
-                Adicionar Refeição
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setImportType('diet');
+                    setImportFormat('spreadsheet');
+                    setIsImportModalOpen(true);
+                  }}
+                  className="gap-1 text-xs border-primary text-primary hover:bg-primary/5"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  Importar Planilha / PDF / JSON
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={addMeal} className="gap-1 text-xs">
+                  <Plus className="w-3.5 h-3.5" />
+                  Adicionar Refeição
+                </Button>
+              </div>
             </div>
+
+            {/* Overall Diet Metadata Display */}
+            {diets.length > 0 && diets[0].metadata && (
+              <div className="bg-secondary/5 border border-border p-5 rounded-xl grid gap-4 sm:grid-cols-2 text-xs">
+                <div className="space-y-2">
+                  <h4 className="font-bold text-muted-foreground uppercase text-[10px] tracking-wide">Informações da Prescrição</h4>
+                  <div className="space-y-1 text-foreground">
+                    <div><span className="text-muted-foreground font-semibold">Paciente:</span> {diets[0].metadata.patient_name}</div>
+                    <div><span className="text-muted-foreground font-semibold">Data:</span> {diets[0].metadata.prescription_date}</div>
+                    <div>
+                      <span className="text-muted-foreground font-semibold">Profissional:</span> {diets[0].metadata.professional_name} ({diets[0].metadata.professional_role} - {diets[0].metadata.professional_crn})
+                    </div>
+                  </div>
+                </div>
+                
+                {diets[0].metadata.shopping_list && diets[0].metadata.shopping_list.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-bold text-muted-foreground uppercase text-[10px] tracking-wide">Lista de Compras</h4>
+                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-2">
+                      {diets[0].metadata.shopping_list.map((item: string, idx: number) => (
+                        <span key={idx} className="bg-secondary/50 border border-border px-2 py-0.5 rounded text-[10px] text-foreground font-semibold">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {diets.length > 0 && diets[0].meals.length > 0 ? (
               <div className="space-y-6">
@@ -1109,6 +1790,28 @@ export default function ChallengeForm() {
                         )}
                       </div>
 
+                      {/* Meal Observations */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Observações de Preparo</Label>
+                        <Input
+                          value={meal.metadata?.observacoes || ''}
+                          onChange={(e) => updateMealMetadata(mIdx, 'observacoes', e.target.value)}
+                          placeholder="Ex: Misturar a chia com a goma de tapioca..."
+                        />
+                      </div>
+
+                      {/* Substitutions */}
+                      {meal.metadata?.substituicoes && meal.metadata.substituicoes.length > 0 && (
+                        <div className="space-y-1.5 p-3.5 bg-primary/5 border border-primary/10 rounded-lg text-xs">
+                          <span className="font-bold block text-primary mb-1">Opções de Substituição:</span>
+                          <ul className="list-disc pl-4 space-y-1 text-muted-foreground">
+                            {meal.metadata.substituicoes.map((sub: string, sIdx: number) => (
+                              <li key={sIdx}>{sub}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
                       {/* Food Items List */}
                       <div className="space-y-3 pt-3 border-t border-border/55">
                         <div className="flex justify-between items-center">
@@ -1168,27 +1871,141 @@ export default function ChallengeForm() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
-  );
-}
 
-// Inline SVGs helpers
-function X(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="sm:max-w-[600px] bg-card border border-border rounded-xl p-6 text-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-foreground">
+              Importador Inteligente de {importType === 'diet' ? 'Plano Alimentar (Dieta)' : 'Planilha de Treino'}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Carregue um arquivo (.json, .csv, .tsv, .txt), cole células do Excel/Sheets, ou cole texto extraído de arquivos PDF.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-4">
+            <div className="flex gap-2 border-b border-border pb-2">
+              <Button
+                type="button"
+                variant={importFormat === 'json' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImportFormat('json')}
+                className="text-xs h-8 px-3"
+              >
+                Colar JSON
+              </Button>
+              <Button
+                type="button"
+                variant={importFormat === 'spreadsheet' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImportFormat('spreadsheet')}
+                className="text-xs h-8 px-3"
+              >
+                Planilha (Excel/CSV/TSV)
+              </Button>
+              <Button
+                type="button"
+                variant={importFormat === 'pdf' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setImportFormat('pdf')}
+                className="text-xs h-8 px-3"
+              >
+                Texto Livre (PDF / Texto)
+              </Button>
+            </div>
+
+            {/* Drag & Drop File Input */}
+            <div className="border border-dashed border-border p-4 rounded-lg bg-secondary/5 text-center space-y-2">
+              <Label className="text-xs text-muted-foreground block">
+                Opcional: Arraste ou selecione um arquivo de entrada para carregar o conteúdo
+              </Label>
+              <input
+                type="file"
+                accept=".json,.csv,.tsv,.txt"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    const text = event.target?.result as string;
+                    setImportText(text);
+                    if (file.name.endsWith('.json')) {
+                      setImportFormat('json');
+                    } else if (file.name.endsWith('.csv') || file.name.endsWith('.tsv')) {
+                      setImportFormat('spreadsheet');
+                    } else {
+                      setImportFormat('pdf');
+                    }
+                  };
+                  reader.readAsText(file);
+                }}
+                className="text-xs text-muted-foreground w-full max-w-xs mx-auto block file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-[11px] file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-foreground">Conteúdo do Documento / Planilha</Label>
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder={
+                  importFormat === 'json'
+                    ? 'Cole o JSON estruturado aqui...'
+                    : importFormat === 'spreadsheet'
+                    ? 'Cole as células copiadas do Excel (colunas separadas por Tab)...'
+                    : 'Cole o texto livre ou corrido copiado do PDF...'
+                }
+                className="w-full h-48 px-3 py-2 text-xs font-mono rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            {/* Import Mode: Replace vs Append */}
+            <div className="flex items-center gap-4 pt-2">
+              <span className="text-xs font-semibold text-muted-foreground">Ação de Importação:</span>
+              <label className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name="importMode"
+                  checked={importMode === 'replace'}
+                  onChange={() => setImportMode('replace')}
+                  className="accent-primary"
+                />
+                Substituir atual
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name="importMode"
+                  checked={importMode === 'append'}
+                  onChange={() => setImportMode('append')}
+                  className="accent-primary"
+                />
+                Adicionar ao final
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsImportModalOpen(false)}
+              className="text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleImportSubmit}
+              className="text-xs"
+            >
+              Confirmar Importação
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

@@ -32,7 +32,7 @@ export function useAdminAuth(redirectToLogin: boolean = true) {
         }
 
         const currentUser = session.user;
-        const { data: profileData, error } = await supabase
+        const { data: profileData, error } = await (supabase as any)
           .from('profiles')
           .select('id, name, avatar_url, role')
           .eq('id', currentUser.id)

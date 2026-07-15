@@ -12,6 +12,9 @@ import NotFound from "@/pages/NotFound";
 
 // Admin Pages
 import Dashboard from "@/pages/admin/Dashboard";
+import Intelligence from "@/pages/admin/Intelligence";
+import Metabolism from "@/pages/admin/Metabolism";
+import HealthBoard from "@/pages/admin/HealthBoard";
 import ChallengesList from "@/pages/admin/ChallengesList";
 import ChallengeForm from "@/pages/admin/ChallengeForm";
 import ChallengeParticipants from "@/pages/admin/ChallengeParticipants";
@@ -24,6 +27,8 @@ import UserDetail from "@/pages/admin/UserDetail";
 import CommunityModeration from "@/pages/admin/CommunityModeration";
 import GamificationDashboard from "@/pages/admin/GamificationDashboard";
 import AICopilot from "@/pages/admin/AICopilot";
+import ReferralCodes from "@/pages/admin/ReferralCodes";
+import Settings from "@/pages/admin/Settings";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +47,8 @@ const App = () => (
             <Route path="/" element={<AdminLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
+              <Route path="intelligence" element={<Intelligence />} />
+              <Route path="health" element={<HealthBoard />} />
               <Route path="copilot" element={<AICopilot />} />
               
               {/* Challenges */}
@@ -56,6 +63,9 @@ const App = () => (
               
               {/* Diets */}
               <Route path="diets" element={<DietsList />} />
+
+              {/* Professional tools */}
+              <Route path="tools/metabolism" element={<Metabolism />} />
               
               {/* Habits */}
               <Route path="habits" element={<HabitTemplates />} />
@@ -69,6 +79,12 @@ const App = () => (
               
               {/* Gamification */}
               <Route path="gamification" element={<GamificationDashboard />} />
+
+              {/* Referral Codes */}
+              <Route path="referrals" element={<ReferralCodes />} />
+
+              {/* Settings */}
+              <Route path="settings" element={<Settings />} />
             </Route>
 
             {/* Catch All */}

@@ -6,7 +6,7 @@ export function useSupabaseQuery<T>(
   queryFn: () => Promise<{ data: T | null; error: any }>,
   options?: any
 ) {
-  return useQuery({
+  return useQuery<T, any, T>({
     queryKey: key,
     queryFn: async () => {
       const { data, error } = await queryFn();

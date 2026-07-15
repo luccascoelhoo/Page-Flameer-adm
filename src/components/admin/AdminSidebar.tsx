@@ -13,7 +13,12 @@ import {
   Award,
   LogOut,
   Sparkles,
-  User
+  User,
+  Gift,
+  Settings,
+  BrainCircuit,
+  Flame,
+  HeartPulse
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -43,14 +48,19 @@ export default function AdminSidebar({ profile }: AdminSidebarProps) {
 
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/intelligence', label: 'Inteligência', icon: BrainCircuit },
+    { to: '/health', label: 'Saúde', icon: HeartPulse },
     { to: '/copilot', label: 'Copiloto IA', icon: Sparkles },
     { to: '/challenges', label: 'Desafios', icon: Trophy },
     { to: '/workouts', label: 'Treinos', icon: Dumbbell },
     { to: '/diets', label: 'Dietas', icon: Apple },
+    { to: '/tools/metabolism', label: 'Calculadora TMB', icon: Flame },
     { to: '/habits', label: 'Hábitos', icon: CheckSquare },
     { to: '/users', label: 'Usuários', icon: Users },
     { to: '/community', label: 'Comunidade', icon: MessageSquare },
     { to: '/gamification', label: 'Gamificação', icon: Award },
+    { to: '/referrals', label: 'Indicações', icon: Gift },
+    { to: '/settings', label: 'Configurações', icon: Settings },
   ];
 
   return (
