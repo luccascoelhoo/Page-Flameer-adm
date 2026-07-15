@@ -36,6 +36,8 @@ interface ReferralCode {
   redemptions_count: number;
   created_at: string;
   created_by: string;
+  challenge_id?: string | null;
+  challenge?: { id: string; title: string } | null;
   profiles: {
     name: string;
     email: string;
@@ -52,28 +54,50 @@ export default function ReferralCodes() {
   const [codeValue, setCodeValue] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
   const [maxRedemptions, setMaxRedemptions] = useState('');
+  const [selectedChallengeId, setSelectedChallengeId] = useState('none');
+  // false when the challenge_id column doesn't exist yet (migration pending)
+  const [linkSupported, setLinkSupported] = useState(true);
 
-  // 1. Fetch all referral codes
+  // 1. Fetch all referral codes — tries the challenge join first, falls back
+  //    gracefully if migration 20260714120000 hasn't been applied yet.
   const { data: codes, isLoading, refetch } = useSupabaseQuery<ReferralCode[]>(
     ['admin', 'referrals', 'list'],
     async () => {
-      const { data, error } = await supabase
+      const full = await (supabase as any)
         .from('referral_codes')
         .select(`
-          id,
-          code,
-          expires_at,
-          max_redemptions,
-          redemptions_count,
-          created_at,
-          created_by,
-          profiles:created_by (
-            name,
-            email
-          )
+          id, code, expires_at, max_redemptions, redemptions_count,
+          created_at, created_by, challenge_id,
+          challenge:challenge_id ( id, title ),
+          profiles:created_by ( name, email )
         `)
         .order('created_at', { ascending: false });
-      return { data: data as any, error };
+
+      if (full.error && /challenge/i.test(full.error.message ?? '')) {
+        setLinkSupported(false);
+        const basic = await supabase
+          .from('referral_codes')
+          .select(`
+            id, code, expires_at, max_redemptions, redemptions_count,
+            created_at, created_by,
+            profiles:created_by ( name, email )
+          `)
+          .order('created_at', { ascending: false });
+        return { data: basic.data as any, error: basic.error };
+      }
+      return { data: full.data as any, error: full.error };
+    }
+  );
+
+  // Challenges for the coupon↔challenge picker
+  const { data: challengeOptions } = useSupabaseQuery<{ id: string; title: string }[]>(
+    ['admin', 'referrals', 'challenge-options'],
+    async () => {
+      const { data, error } = await (supabase as any)
+        .from('challenges')
+        .select('id, title')
+        .order('title');
+      return { data, error };
     }
   );
 
@@ -84,12 +108,16 @@ export default function ReferralCodes() {
       const adminUserId = session?.user?.id;
       if (!adminUserId) throw new Error("Sessão admin expirada. Faça login novamente.");
 
-      const referralData = {
+      const referralData: Record<string, any> = {
         code: payload.code.toUpperCase().trim(),
         expires_at: payload.expires_at ? new Date(payload.expires_at).toISOString() : null,
         max_redemptions: payload.max_redemptions ? parseInt(payload.max_redemptions, 10) : null,
         created_by: adminUserId
       };
+      // Cupom vinculado a um desafio específico (opcional)
+      if (linkSupported && payload.challenge_id && payload.challenge_id !== 'none') {
+        referralData.challenge_id = payload.challenge_id;
+      }
 
       const { data, error } = await supabase
         .from('referral_codes')
@@ -147,6 +175,7 @@ export default function ReferralCodes() {
     setCodeValue('');
     setExpiresAt('');
     setMaxRedemptions('');
+    setSelectedChallengeId('none');
   };
 
   const handleGenerateCode = () => {
@@ -189,7 +218,8 @@ export default function ReferralCodes() {
     createCode.mutate({
       code: codeValue,
       expires_at: expiresAt,
-      max_redemptions: maxRedemptions
+      max_redemptions: maxRedemptions,
+      challenge_id: selectedChallengeId
     });
   };
 
@@ -280,6 +310,26 @@ export default function ReferralCodes() {
                 />
               </div>
 
+              {linkSupported && (
+                <div className="space-y-2">
+                  <Label htmlFor="challengeLink" className="text-xs font-bold text-foreground">Vincular a um Desafio (Opcional)</Label>
+                  <select
+                    id="challengeLink"
+                    value={selectedChallengeId}
+                    onChange={(e) => setSelectedChallengeId(e.target.value)}
+                    className="h-10 w-full px-3 rounded-lg border border-input bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="none">Nenhum — cupom geral</option>
+                    {(challengeOptions ?? []).map((ch) => (
+                      <option key={ch.id} value={ch.id}>{ch.title}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-muted-foreground">
+                    Cupons vinculados servem para campanhas de um desafio específico.
+                  </p>
+                </div>
+              )}
+
               <DialogFooter className="pt-4 border-t border-border flex sm:justify-end gap-2">
                 <Button 
                   type="button" 
@@ -330,6 +380,7 @@ export default function ReferralCodes() {
             <TableHeader className="bg-secondary/30">
               <TableRow>
                 <TableHead className="font-bold text-foreground">Código</TableHead>
+                {linkSupported && <TableHead className="font-bold text-foreground">Desafio</TableHead>}
                 <TableHead className="font-bold text-foreground">Criado Por</TableHead>
                 <TableHead className="font-bold text-foreground">Data de Criação</TableHead>
                 <TableHead className="font-bold text-foreground">Expiração</TableHead>
@@ -360,6 +411,17 @@ export default function ReferralCodes() {
                       </Button>
                     </div>
                   </TableCell>
+                  {linkSupported && (
+                    <TableCell>
+                      {c.challenge ? (
+                        <span className="text-xs font-semibold text-primary truncate max-w-[160px] inline-block">
+                          {c.challenge.title}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Geral</span>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     {c.profiles ? (
                       <div>

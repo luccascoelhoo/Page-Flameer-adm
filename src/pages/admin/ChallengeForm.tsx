@@ -32,6 +32,15 @@ import {
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CoverImageUpload from '@/components/admin/CoverImageUpload';
+
+// Curated SF Symbols the iOS app renders well as challenge icons
+const CHALLENGE_ICONS = [
+  'trophy', 'trophy.fill', 'flame.fill', 'bolt.fill', 'heart.fill',
+  'dumbbell.fill', 'figure.run', 'figure.strengthtraining.traditional',
+  'fork.knife', 'leaf.fill', 'moon.stars.fill', 'drop.fill',
+  'star.fill', 'crown.fill', 'medal.fill', 'target',
+];
 
 // Local types for unified state
 interface LocalHabit {
@@ -131,6 +140,8 @@ export default function ChallengeForm() {
   const [challengeType, setChallengeType] = useState<'individual' | 'group_private' | 'group_public'>('group_public');
   const [maxParticipants, setMaxParticipants] = useState(50);
   const [isFeatured, setIsFeatured] = useState(false);
+  // Appearance: [primary, background] hex pair consumed by the iOS app
+  const [themeColors, setThemeColors] = useState<[string, string]>(['#6B1D2F', '#F7F4EF']);
 
   // Tab 2: Habits
   const [habits, setHabits] = useState<LocalHabit[]>([]);
@@ -203,6 +214,9 @@ export default function ChallengeForm() {
         setCoverImageUrl(data.cover_image_url || '');
         setShareCode(data.share_code || '');
         setIsFeatured(data.is_featured || false);
+        if (Array.isArray(data.theme_colors) && data.theme_colors.length >= 2) {
+          setThemeColors([data.theme_colors[0], data.theme_colors[1]]);
+        }
 
         if (data.habits) setHabits(data.habits);
         if (data.workouts) setWorkouts(data.workouts);
@@ -235,6 +249,9 @@ export default function ChallengeForm() {
       setChallengeType(pkgData.challenge_type || 'group_public');
       setMaxParticipants(pkgData.max_participants || 50);
       setIsFeatured(pkgData.is_featured || false);
+      if (Array.isArray(pkgData.theme_colors) && pkgData.theme_colors.length >= 2) {
+        setThemeColors([pkgData.theme_colors[0], pkgData.theme_colors[1]]);
+      }
 
       // Load Habits
       const mappedHabits = pkgData.habits?.map((h: any) => ({
@@ -1042,7 +1059,7 @@ export default function ChallengeForm() {
       duration_days: Number(durationDays),
       prize: prize || null,
       icon_name: iconName,
-      theme_colors: ['#6B1D2F', '#F7F4EF'], // Burgundy e Bege padrão
+      theme_colors: themeColors,
       cover_image_url: coverImageUrl || null,
       share_code: shareCode,
       is_featured: isFeatured,
@@ -1276,13 +1293,90 @@ export default function ChallengeForm() {
               </div>
 
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="cover">Capa (Imagem URL)</Label>
-                <Input
-                  id="cover"
-                  value={coverImageUrl}
-                  onChange={(e) => setCoverImageUrl(e.target.value)}
-                  placeholder="https://exemplo.com/imagem.png"
-                />
+                <Label>Capa do desafio</Label>
+                <CoverImageUpload value={coverImageUrl} onChange={setCoverImageUrl} />
+              </div>
+
+              {/* Aparência: cores do tema + ícone (renderizados pelo app iOS) */}
+              <div className="space-y-3 sm:col-span-2 border border-border rounded-lg p-4 bg-secondary/20">
+                <Label className="text-sm font-semibold">Aparência no app</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] text-muted-foreground block">Cor principal</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={themeColors[0]}
+                        onChange={(e) => setThemeColors([e.target.value, themeColors[1]])}
+                        className="h-9 w-12 rounded border border-border cursor-pointer bg-transparent"
+                      />
+                      <Input
+                        value={themeColors[0]}
+                        onChange={(e) => setThemeColors([e.target.value, themeColors[1]])}
+                        className="text-xs font-mono h-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] text-muted-foreground block">Cor de fundo</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={themeColors[1]}
+                        onChange={(e) => setThemeColors([themeColors[0], e.target.value])}
+                        className="h-9 w-12 rounded border border-border cursor-pointer bg-transparent"
+                      />
+                      <Input
+                        value={themeColors[1]}
+                        onChange={(e) => setThemeColors([themeColors[0], e.target.value])}
+                        className="text-xs font-mono h-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] text-muted-foreground block">Ícone (SF Symbol)</span>
+                    <select
+                      value={CHALLENGE_ICONS.includes(iconName) ? iconName : '__custom'}
+                      onChange={(e) => {
+                        if (e.target.value !== '__custom') setIconName(e.target.value);
+                      }}
+                      className="h-9 w-full px-2.5 rounded-lg border border-input bg-card text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {CHALLENGE_ICONS.map((ic) => (
+                        <option key={ic} value={ic}>{ic}</option>
+                      ))}
+                      <option value="__custom">personalizado…</option>
+                    </select>
+                    {!CHALLENGE_ICONS.includes(iconName) && (
+                      <Input
+                        value={iconName}
+                        onChange={(e) => setIconName(e.target.value)}
+                        placeholder="nome do SF Symbol"
+                        className="text-xs h-9 mt-1.5"
+                      />
+                    )}
+                  </div>
+                </div>
+                {/* Prévia ao vivo */}
+                <div
+                  className="rounded-lg px-4 py-3 flex items-center gap-3"
+                  style={{ background: themeColors[0] }}
+                >
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                    style={{ background: themeColors[1], color: themeColors[0] }}
+                  >
+                    ★
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate" style={{ color: themeColors[1] }}>
+                      {title || 'Título do desafio'}
+                    </p>
+                    <p className="text-[10px] opacity-80 truncate" style={{ color: themeColors[1] }}>
+                      prévia das cores no app · ícone: {iconName}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center space-x-2.5 sm:col-span-2 pt-2">

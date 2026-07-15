@@ -15,6 +15,8 @@ import Dashboard from "@/pages/admin/Dashboard";
 import Intelligence from "@/pages/admin/Intelligence";
 import Metabolism from "@/pages/admin/Metabolism";
 import HealthBoard from "@/pages/admin/HealthBoard";
+import AuditLog from "@/pages/admin/AuditLog";
+import RequireAdmin from "@/components/admin/RequireAdmin";
 import ChallengesList from "@/pages/admin/ChallengesList";
 import ChallengeForm from "@/pages/admin/ChallengeForm";
 import ChallengeParticipants from "@/pages/admin/ChallengeParticipants";
@@ -80,11 +82,10 @@ const App = () => (
               {/* Gamification */}
               <Route path="gamification" element={<GamificationDashboard />} />
 
-              {/* Referral Codes */}
-              <Route path="referrals" element={<ReferralCodes />} />
-
-              {/* Settings */}
-              <Route path="settings" element={<Settings />} />
+              {/* Admin-only surfaces */}
+              <Route path="referrals" element={<RequireAdmin><ReferralCodes /></RequireAdmin>} />
+              <Route path="settings" element={<RequireAdmin><Settings /></RequireAdmin>} />
+              <Route path="audit" element={<RequireAdmin><AuditLog /></RequireAdmin>} />
             </Route>
 
             {/* Catch All */}

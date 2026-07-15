@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 import { useServerTable } from '@/hooks/admin/useServerTable';
 import { TablePagination, SortableHead } from '@/components/admin/TableControls';
 import { downloadCsv } from '@/lib/admin/export';
@@ -39,6 +40,8 @@ function roleBadgeClass(role: string) {
 
 export default function UsersList() {
   const { toast } = useToast();
+  const { profile } = useAdminAuth(false);
+  const canChangeRoles = profile?.role === 'admin';
   const [roleFilter, setRoleFilter] = useState('all');
   const [selected, setSelected] = useState<Record<string, any>>({});
   const [applying, setApplying] = useState(false);
@@ -94,6 +97,17 @@ export default function UsersList() {
       title: 'Permissões atualizadas',
       description: `${selectedIds.length} usuário(s) agora são "${role}".`,
     });
+    // trilha de auditoria (best-effort; requer migração admin_foundation)
+    try {
+      await (supabase as any).rpc('admin_log_action', {
+        p_action: 'users.role.bulk',
+        p_entity: 'profiles',
+        p_entity_id: selectedIds.join(','),
+        p_metadata: { role, count: selectedIds.length },
+      });
+    } catch {
+      /* auditoria ainda não migrada */
+    }
     clearSelection();
     table.refetch();
   };
@@ -166,23 +180,25 @@ export default function UsersList() {
             {selectedIds.length} selecionado(s)
           </span>
           <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" className="h-8 gap-1.5 text-xs" disabled={applying}>
-                  {applying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
-                  Alterar permissão
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel className="text-xs">Definir como</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {ROLES.map((r) => (
-                  <DropdownMenuItem key={r.value} onClick={() => bulkSetRole(r.value)} className="text-xs">
-                    {r.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {canChangeRoles && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="h-8 gap-1.5 text-xs" disabled={applying}>
+                    {applying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                    Alterar permissão
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="text-xs">Definir como</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {ROLES.map((r) => (
+                    <DropdownMenuItem key={r.value} onClick={() => bulkSetRole(r.value)} className="text-xs">
+                      {r.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button
               variant="outline"
               size="sm"

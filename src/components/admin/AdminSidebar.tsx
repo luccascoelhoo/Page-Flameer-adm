@@ -18,7 +18,8 @@ import {
   Settings,
   BrainCircuit,
   Flame,
-  HeartPulse
+  HeartPulse,
+  ScrollText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,8 @@ export default function AdminSidebar({ profile }: AdminSidebarProps) {
     }
   };
 
+  const isAdmin = profile?.role === 'admin';
+
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/intelligence', label: 'Inteligência', icon: BrainCircuit },
@@ -59,8 +62,14 @@ export default function AdminSidebar({ profile }: AdminSidebarProps) {
     { to: '/users', label: 'Usuários', icon: Users },
     { to: '/community', label: 'Comunidade', icon: MessageSquare },
     { to: '/gamification', label: 'Gamificação', icon: Award },
-    { to: '/referrals', label: 'Indicações', icon: Gift },
-    { to: '/settings', label: 'Configurações', icon: Settings },
+    // Superfícies de plataforma — somente administradores
+    ...(isAdmin
+      ? [
+          { to: '/referrals', label: 'Cupons & Indicações', icon: Gift },
+          { to: '/audit', label: 'Auditoria', icon: ScrollText },
+          { to: '/settings', label: 'Configurações', icon: Settings },
+        ]
+      : []),
   ];
 
   return (
