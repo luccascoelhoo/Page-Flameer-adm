@@ -40,6 +40,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CoverImageUpload from '@/components/admin/CoverImageUpload';
 import CarouselImagesUpload from '@/components/admin/CarouselImagesUpload';
+import IconImageUpload from '@/components/admin/IconImageUpload';
 import RegrasDeAcessoDoProduto from '@/components/admin/RegrasDeAcessoDoProduto';
 import {
   REGRAS_DE_ACESSO_PADRAO,
@@ -209,6 +210,8 @@ export default function ChallengeForm() {
   // Mora em challenges.metadata.appearance, gravado pela RPC dedicada
   // salvar_aparencia_do_desafio (save_challenge_package não toca em metadata).
   const [coverImages, setCoverImages] = useState<string[]>([]);
+  // Logo no lugar do SF Symbol (20/10): appearance.icon_image_url. Vazio = símbolo.
+  const [iconImageUrl, setIconImageUrl] = useState('');
   const [carouselSeconds, setCarouselSeconds] = useState(4);
   const [mostrarDias, setMostrarDias] = useState(true);
   const [mostrarAtletas, setMostrarAtletas] = useState(true);
@@ -362,6 +365,7 @@ export default function ChallengeForm() {
       setSegLocal(Array.isArray(seg.local) ? seg.local : []);
       const ap = pkgData.metadata?.appearance ?? {};
       setCoverImages(Array.isArray(ap.cover_images) ? ap.cover_images : []);
+      setIconImageUrl(typeof ap.icon_image_url === 'string' ? ap.icon_image_url : '');
       setCarouselSeconds(typeof ap.carousel_seconds === 'number' ? ap.carousel_seconds : 4);
       setMostrarDias(ap.mostrar_dias !== false);
       setMostrarAtletas(ap.mostrar_atletas !== false);
@@ -1409,6 +1413,7 @@ export default function ChallengeForm() {
       // não conhece, e a mutation a repassa para a RPC de aparência.
       __appearance: {
         cover_images: coverImages,
+        icon_image_url: iconImageUrl || null,
         carousel_seconds: Number(carouselSeconds) || 4,
         mostrar_dias: mostrarDias,
         mostrar_atletas: mostrarAtletas,
@@ -1762,7 +1767,7 @@ export default function ChallengeForm() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <span className="text-[11px] text-muted-foreground block">Ícone (SF Symbol)</span>
+                  <span className="text-[11px] text-muted-foreground block">Ícone (SF Symbol ou imagem)</span>
                   <select
                     value={CHALLENGE_ICONS.includes(iconName) ? iconName : '__custom'}
                     onChange={(e) => {
@@ -1783,6 +1788,12 @@ export default function ChallengeForm() {
                       className="text-xs h-9 mt-1.5"
                     />
                   )}
+                  <IconImageUpload value={iconImageUrl} onChange={setIconImageUrl} />
+                  {iconImageUrl && (
+                    <p className="text-[10px] text-muted-foreground">
+                      O app mostra esta imagem no lugar do símbolo. PNG transparente fica melhor.
+                    </p>
+                  )}
                 </div>
               </div>
               {/* Prévia ao vivo */}
@@ -1794,14 +1805,18 @@ export default function ChallengeForm() {
                   className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
                   style={{ background: themeColors[1], color: themeColors[0] }}
                 >
-                  ★
+                  {iconImageUrl ? (
+                    <img src={iconImageUrl} alt="" className="w-5 h-5 object-contain" />
+                  ) : (
+                    '★'
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-bold truncate" style={{ color: themeColors[1] }}>
                     {title || 'Título do desafio'}
                   </p>
                   <p className="text-[10px] opacity-80 truncate" style={{ color: themeColors[1] }}>
-                    prévia das cores no app · ícone: {iconName}
+                    prévia das cores no app · ícone: {iconImageUrl ? 'imagem' : iconName}
                   </p>
                 </div>
               </div>
