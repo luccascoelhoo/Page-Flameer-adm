@@ -5,95 +5,110 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── SALA DE CONTROLE (17/08/2026, decisão do dono) ──────────────────
+     O painel é DARK-FIRST: :root é o tema escuro — grafite profundo em
+     camadas, densidade alta, cantos discretos, e o laranja Flameer SÓ como
+     acento. O bordô/bege "Lovable de fábrica" morreu aqui.
+
+     Contraste do acento: texto sobre o laranja é QUASE-PRETO, nunca branco
+     (lição medida no app: branco sobre #FF6B00 = 2,87:1, reprova WCAG;
+     preto = 7,3:1). Por isso --primary-foreground é escuro no dark.        */
   :root {
-    --background: 40 23% 95%; /* Beige Claro #F7F4EF */
-    --foreground: 0 0% 8%; /* Off-black #141414 */
+    --background: 220 8% 6%;        /* grafite profundo — o chão da sala */
+    --foreground: 220 10% 92%;
 
-    --card: 0 0% 100%; /* Branco */
-    --card-foreground: 0 0% 8%;
+    --card: 220 8% 9%;              /* superfície 1º degrau */
+    --card-foreground: 220 10% 92%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 8%;
+    --popover: 220 8% 10%;
+    --popover-foreground: 220 10% 92%;
 
-    --primary: 346 57% 27%; /* Burgundy / Bordô #6B1D2F */
-    --primary-foreground: 0 0% 100%;
+    --primary: 25 100% 50%;         /* laranja Flameer #FF6B00 — só acento */
+    --primary-foreground: 20 14% 8%;/* quase-preto sobre o laranja (7,3:1) */
 
-    --secondary: 40 17% 92%; /* Bege Escuro #EFECE6 */
-    --secondary-foreground: 346 57% 27%;
+    --secondary: 220 7% 13%;        /* superfície 2º degrau */
+    --secondary-foreground: 220 10% 92%;
 
-    --muted: 40 17% 92%;
-    --muted-foreground: 0 0% 40%;
+    --muted: 220 7% 13%;
+    --muted-foreground: 220 5% 62%;
 
-    --accent: 346 57% 27%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 220 7% 15%;           /* hover de item — neutro, não laranja */
+    --accent-foreground: 220 10% 92%;
 
-    --destructive: 345 85% 55%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 50% 45%;
+    --success: 142 60% 42%;
     --success-foreground: 0 0% 100%;
 
-    --border: 40 17% 85%;
-    --input: 40 17% 85%;
-    --ring: 346 57% 27%;
+    --border: 220 7% 16%;
+    --input: 220 7% 16%;
+    --ring: 25 100% 50%;
 
-    --radius: 0.5rem; /* Mais geométrico / afiado */
+    --radius: 0.375rem;             /* cantos discretos — robusto, não bolha */
 
-    --sidebar-background: 40 20% 93%;
-    --sidebar-foreground: 0 0% 8%;
-    --sidebar-primary: 346 57% 27%;
+    --sidebar-background: 220 9% 4%;  /* um degrau abaixo do chão */
+    --sidebar-foreground: 220 8% 78%;
+    --sidebar-primary: 25 100% 50%;
+    --sidebar-primary-foreground: 20 14% 8%;
+    --sidebar-accent: 220 7% 11%;
+    --sidebar-accent-foreground: 220 10% 92%;
+    --sidebar-border: 220 7% 12%;
+    --sidebar-ring: 25 100% 50%;
+
+    --nav-bg: 220 9% 3%;
+  }
+
+  /* Tema claro SECUNDÁRIO — sóbrio e neutro (frio, não bege), para quem
+     preferir ler ficha longa em fundo claro. O laranja escurece para passar
+     contraste sobre claro (mesma família do accentForeground do app). */
+  .light {
+    --background: 220 14% 96%;
+    --foreground: 220 15% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 10%;
+
+    --primary: 25 95% 38%;          /* laranja queimado — 4,6:1 sobre branco */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 12% 91%;
+    --secondary-foreground: 220 15% 10%;
+
+    --muted: 220 12% 91%;
+    --muted-foreground: 220 8% 38%;
+
+    --accent: 220 12% 90%;
+    --accent-foreground: 220 15% 10%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 60% 32%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 220 10% 86%;
+    --input: 220 10% 86%;
+    --ring: 25 95% 38%;
+
+    --sidebar-background: 220 12% 93%;
+    --sidebar-foreground: 220 15% 20%;
+    --sidebar-primary: 25 95% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 17% 90%;
-    --sidebar-accent-foreground: 346 57% 27%;
-    --sidebar-border: 40 17% 83%;
-    --sidebar-ring: 346 57% 27%;
+    --sidebar-accent: 220 12% 88%;
+    --sidebar-accent-foreground: 220 15% 10%;
+    --sidebar-border: 220 10% 84%;
+    --sidebar-ring: 25 95% 38%;
 
     --nav-bg: 0 0% 5%;
   }
 
-  .dark {
-    --background: 240 10% 4%; /* Dark Charcoal para fundo dark */
-    --foreground: 40 23% 95%;
-
-    --card: 240 10% 8%; /* Card Dark */
-    --card-foreground: 40 23% 95%;
-
-    --popover: 240 10% 8%;
-    --popover-foreground: 40 23% 95%;
-
-    --primary: 346 65% 35%; /* Burgundy Principal */
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 240 10% 12%;
-    --secondary-foreground: 40 23% 95%;
-
-    --muted: 240 10% 12%;
-    --muted-foreground: 240 5% 65%;
-
-    --accent: 346 65% 35%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 345 85% 55%;
-    --destructive-foreground: 0 0% 100%;
-
-    --success: 142 50% 45%;
-    --success-foreground: 0 0% 100%;
-
-    --border: 240 5% 15%;
-    --input: 240 5% 15%;
-    --ring: 346 65% 35%;
-
-    --nav-bg: 240 10% 3%;
-
-    --sidebar-background: 240 10% 4%;
-    --sidebar-foreground: 40 23% 95%;
-    --sidebar-primary: 346 65% 35%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 10% 10%;
-    --sidebar-accent-foreground: 40 23% 95%;
-    --sidebar-border: 240 5% 15%;
-    --sidebar-ring: 346 65% 35%;
-  }
+  /* Compatibilidade: código antigo que ainda liga .dark recebe o mesmo
+     tema principal (o :root JÁ é escuro — a classe vira no-op). */
+  .dark { }
 }
 
 @layer base {

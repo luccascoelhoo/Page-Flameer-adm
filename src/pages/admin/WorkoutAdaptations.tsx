@@ -83,7 +83,7 @@ export default function WorkoutAdaptations() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground font-sans">Adaptações Biomecânicas</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Adaptações Biomecânicas</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Analise e responda às solicitações de substituição de exercícios por lesões ou limitações físicas.
           </p>
@@ -91,7 +91,7 @@ export default function WorkoutAdaptations() {
       </div>
 
       {/* Table */}
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-md overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" />

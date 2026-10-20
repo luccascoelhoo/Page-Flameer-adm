@@ -60,7 +60,7 @@ export default function AuditLog() {
             <ScrollText className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Auditoria</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Auditoria</h1>
             <p className="text-sm text-muted-foreground">
               Trilha de ações administrativas — quem fez o quê, e quando.
             </p>
@@ -97,7 +97,7 @@ export default function AuditLog() {
         </select>
       </div>
 
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-md overflow-hidden">
         {table.isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-7 h-7 animate-spin text-primary mr-2" />

@@ -454,7 +454,7 @@ Regras de Gerenciamento Ativo (IA Gatekeeper):
         {/* Loading Indicator */}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-2 text-sm text-muted-foreground font-medium shadow-sm">
+            <div className="bg-card border border-border rounded-md p-4 flex items-center gap-2 text-sm text-muted-foreground font-medium">
               <Loader2 className="w-4 h-4 animate-spin text-primary" />
               <span>Copiloto de gerência analisando integridade e riscos...</span>
             </div>

@@ -188,13 +188,13 @@ export default function Settings() {
 
       let result;
       if (settings.id) {
-        result = await supabase
-          .from('ai_settings' as any)
+        result = await (supabase as any)
+          .from('ai_settings')
           .update(payload)
           .eq('id', settings.id);
       } else {
-        result = await supabase
-          .from('ai_settings' as any)
+        result = await (supabase as any)
+          .from('ai_settings')
           .insert(payload)
           .select()
           .single();
@@ -330,7 +330,7 @@ export default function Settings() {
           <SettingsIcon className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Configurações</h1>
           <p className="text-muted-foreground text-sm">
             Gerencie a integração de IA, chaves de API e instruções do sistema.
           </p>

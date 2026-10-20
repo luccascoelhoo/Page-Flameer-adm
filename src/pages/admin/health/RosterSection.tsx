@@ -48,7 +48,7 @@ export default function RosterSection({ onSelectMember }: { onSelectMember: (id:
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center bg-card border border-border rounded-xl">
+      <div className="flex flex-col items-center justify-center py-20 text-center bg-card border border-border rounded-md">
         <Watch className="w-10 h-10 text-muted-foreground mb-4" />
         <h3 className="font-semibold text-lg text-foreground">Nenhum dado de wearable ainda</h3>
         <p className="text-sm text-muted-foreground mt-2 max-w-md">
@@ -72,7 +72,7 @@ export default function RosterSection({ onSelectMember }: { onSelectMember: (id:
   return (
     <div className="space-y-6">
       {/* Morning briefing */}
-      <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+      <div className="bg-card border border-border rounded-md p-5">
         <div className="flex items-center gap-2 mb-2">
           <Sunrise className="w-4 h-4 text-primary" />
           <h3 className="font-bold text-sm text-foreground">Briefing do dia</h3>
@@ -124,7 +124,7 @@ export default function RosterSection({ onSelectMember }: { onSelectMember: (id:
       </div>
 
       {/* Traffic-light roster */}
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-md overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center gap-2">
           <Activity className="w-4 h-4 text-primary" />
           <h3 className="font-bold text-sm text-foreground">Prontidão por membro</h3>

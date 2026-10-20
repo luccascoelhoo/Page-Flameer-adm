@@ -34,7 +34,7 @@ const userCsvCols = [
   { header: 'Nome', accessor: (u: UserAggregate) => u.name },
   { header: 'ID', accessor: (u: UserAggregate) => u.user_id },
   { header: 'Nível', accessor: (u: UserAggregate) => u.level },
-  { header: 'XP', accessor: (u: UserAggregate) => u.xp },
+  { header: 'Pontos', accessor: (u: UserAggregate) => u.pontos },
   { header: 'Ofensiva', accessor: (u: UserAggregate) => u.streak },
   { header: 'Treinos', accessor: (u: UserAggregate) => u.workouts },
   { header: 'Dietas', accessor: (u: UserAggregate) => u.diets },
@@ -56,17 +56,19 @@ function ClusteringPanel({ aggregates, vectors }: { aggregates: UserAggregate[];
   const clusters: Cluster<UserAggregate>[] = React.useMemo(() => {
     if (vectors.length === 0) return [];
     const { normalized } = normalize(vectors);
-    return kmeans(normalized, k).sort((a, b) => b.size - a.size);
+    // kmeans devolve Cluster<unknown>[]; os vetores correspondem 1:1 aos
+    // aggregates por posição — o cast só nomeia o que já é verdade.
+    return (kmeans(normalized, k) as Cluster<UserAggregate>[]).sort((a, b) => b.size - a.size);
   }, [vectors, k]);
 
-  // Assign a colour per cluster and build scatter series (XP vs adherence)
+  // Assign a colour per cluster and build scatter series (pontos vs aderência)
   const scatterSeries = clusters.map((c, i) => ({
     id: i,
     color: CATEGORICAL[i % CATEGORICAL.length],
     label: describeCluster(c.members).label,
     points: c.members.map((m) => ({
       x: Math.round(ratio(m.habitsDone, m.habitsTotal) * 100),
-      y: m.xp,
+      y: m.pontos,
       z: m.streak + 2,
       name: m.name,
     })),
@@ -105,7 +107,7 @@ function ClusteringPanel({ aggregates, vectors }: { aggregates: UserAggregate[];
 
       <ChartCard
         title="Mapa comportamental"
-        subtitle="Cada ponto é um usuário — aderência (x) × XP (y), tamanho = ofensiva. Cores = comunidades."
+        subtitle="Cada ponto é um usuário — aderência (x) × pontos (y), tamanho = ofensiva. Cores = comunidades."
         className="min-h-[360px]"
       >
         <div className="h-80 w-full">
@@ -122,7 +124,7 @@ function ClusteringPanel({ aggregates, vectors }: { aggregates: UserAggregate[];
                 tickLine={false}
                 axisLine={false}
               />
-              <YAxis type="number" dataKey="y" name="XP" {...axisStyle} tickLine={false} axisLine={false} width={44} />
+              <YAxis type="number" dataKey="y" name="Pontos" {...axisStyle} tickLine={false} axisLine={false} width={44} />
               <ZAxis type="number" dataKey="z" range={[30, 260]} />
               <Tooltip
                 contentStyle={tooltipStyle}
@@ -142,9 +144,9 @@ function ClusteringPanel({ aggregates, vectors }: { aggregates: UserAggregate[];
         {clusters.map((c, i) => {
           const desc = describeCluster(c.members);
           const color = CATEGORICAL[i % CATEGORICAL.length];
-          const preview = [...c.members].sort((a, b) => b.xp - a.xp).slice(0, 4);
+          const preview = [...c.members].sort((a, b) => b.pontos - a.pontos).slice(0, 4);
           return (
-            <div key={i} className="bg-card border border-border rounded-xl p-5 shadow-sm">
+            <div key={i} className="bg-card border border-border rounded-md p-5">
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2.5">
                   <span className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
@@ -184,7 +186,7 @@ function ClusteringPanel({ aggregates, vectors }: { aggregates: UserAggregate[];
                   <div key={m.user_id} className="flex items-center justify-between text-[11px]">
                     <span className="font-medium text-foreground truncate max-w-[160px]">{m.name}</span>
                     <span className="text-muted-foreground tabular-nums">
-                      Nv {m.level} · {m.xp} XP · {m.streak}🔥
+                      Nv {m.level} · {m.pontos} pts · {m.streak}🔥
                     </span>
                   </div>
                 ))}
@@ -255,7 +257,7 @@ function SegmentBuilder({ aggregates }: { aggregates: UserAggregate[] }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-5">
-      <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 shadow-sm space-y-5">
+      <div className="lg:col-span-2 bg-card border border-border rounded-md p-6 space-y-5">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-primary" />
           <h3 className="font-bold text-sm text-foreground">Regras do segmento</h3>
@@ -291,7 +293,7 @@ function SegmentBuilder({ aggregates }: { aggregates: UserAggregate[] }) {
         </Button>
       </div>
 
-      <div className="lg:col-span-3 bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col">
+      <div className="lg:col-span-3 bg-card border border-border rounded-md p-6 flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4 text-primary" />
@@ -378,7 +380,7 @@ export default function CommunitiesSection({ periodDays }: { periodDays: number 
           Descoberta automática de comunidades
         </h2>
         <p className="text-xs text-muted-foreground mb-4">
-          Agrupamento não supervisionado (k-means) sobre aderência, frequência de treino/dieta, ofensiva, XP e recência.
+          Agrupamento não supervisionado (k-means) sobre aderência, frequência de treino/dieta, ofensiva, pontos e recência.
         </p>
         <ClusteringPanel aggregates={aggregates} vectors={vectors} />
       </div>

@@ -78,7 +78,22 @@ export function useContentActions(table: ContentTable) {
       const { error } = await sb.from(table).delete().eq('id', id);
       setBusyId(null);
       if (error) {
-        toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+        // Violação de FK não pode chegar crua ao admin. Desde que
+        // workouts/diets/habits ganharam FK para `challenges` com ON DELETE
+        // RESTRICT, o erro mais provável aqui é justamente esse — e o texto do
+        // Postgres ("update or delete on table ... violates foreign key
+        // constraint ... on table ...") não diz o que fazer.
+        const eFK = error.code === '23503'
+          || /foreign key constraint/i.test(error.message ?? '');
+        toast({
+          title: eFK ? 'Ainda há conteúdo vinculado' : 'Erro ao excluir',
+          description: eFK
+            ? 'Remova os treinos, dietas e hábitos deste desafio antes de excluí-lo. ' +
+              'O banco recusa a exclusão em cascata de propósito: conteúdo pago sem ' +
+              'desafio vira conteúdo público.'
+            : error.message,
+          variant: 'destructive',
+        });
         return false;
       }
       await audit(`${table}.delete`, table, id);

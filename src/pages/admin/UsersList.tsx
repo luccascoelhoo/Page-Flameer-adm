@@ -48,7 +48,12 @@ export default function UsersList() {
 
   const table = useServerTable<any>({
     table: 'profiles',
-    columns: 'id, name, avatar_url, email, role, cohort_group, streak, xp, level, created_at',
+    // `email` SAIU daqui em 13/08. A coluna deixou de ser legível por
+    // `authenticated` — qualquer conta criada no app lia o e-mail de todo
+    // mundo. O painel continua tendo acesso, mas por porta com portão:
+    // `admin_emails_de_perfis()`, chamada só na exportação, que é o único
+    // lugar onde o e-mail era de fato usado nesta tela.
+    columns: 'id, name, avatar_url, role, cohort_group, streak, pontos, level, created_at',
     searchColumn: 'name',
     defaultSort: { column: 'created_at', ascending: false },
     filters: { role: roleFilter },
@@ -84,13 +89,21 @@ export default function UsersList() {
   const bulkSetRole = async (role: string) => {
     if (selectedIds.length === 0) return;
     setApplying(true);
-    const { error } = await (supabase as any)
-      .from('profiles')
-      .update({ role })
-      .in('id', selectedIds);
+    // Via RPC admin_set_role, que valida is_platform_admin() no servidor. O UPDATE
+    // direto era bloqueado pela RLS de profiles (e pelo trigger anti-escalação),
+    // mas o PostgREST devolvia sucesso mesmo afetando zero linhas — o painel dizia
+    // "atualizado" e nada mudava. A RPC ou aplica ou lança erro visível.
+    let firstError: string | null = null;
+    for (const id of selectedIds) {
+      const { error } = await (supabase as any).rpc('admin_set_role', {
+        p_user_id: id,
+        p_role: role,
+      });
+      if (error && !firstError) firstError = error.message;
+    }
     setApplying(false);
-    if (error) {
-      toast({ title: 'Erro ao atualizar permissões', description: error.message, variant: 'destructive' });
+    if (firstError) {
+      toast({ title: 'Erro ao atualizar permissões', description: firstError, variant: 'destructive' });
       return;
     }
     toast({
@@ -112,14 +125,31 @@ export default function UsersList() {
     table.refetch();
   };
 
-  const exportRows = (rows: any[], filename: string) => {
+  const exportRows = async (rows: any[], filename: string) => {
+    // Os e-mails vêm pela RPC de admin, e só na hora de exportar. A função
+    // recusa quem não é admin e aceita no máximo 200 ids por chamada — nem um
+    // admin baixa a base inteira por acidente.
+    let emails: Record<string, string> = {};
+    const ids = rows.map((r) => r.id).slice(0, 200);
+    if (ids.length > 0) {
+      const { data, error } = await (supabase as any)
+        .rpc('admin_emails_de_perfis', { p_ids: ids });
+      if (error) {
+        // Sem e-mail é melhor que sem CSV: o resto das colunas continua útil,
+        // e a coluna sai vazia em vez de a exportação inteira falhar.
+        toast({ title: 'E-mails indisponíveis',
+                description: 'O CSV sai sem a coluna de e-mail.', variant: 'destructive' });
+      } else {
+        for (const linha of (data ?? [])) emails[linha.id] = linha.email;
+      }
+    }
     downloadCsv(filename, rows, [
       { header: 'Nome', accessor: (r) => r.name },
-      { header: 'Email', accessor: (r) => r.email ?? '' },
+      { header: 'Email', accessor: (r) => emails[r.id] ?? '' },
       { header: 'Permissão', accessor: (r) => r.role },
       { header: 'Coorte', accessor: (r) => r.cohort_group ?? '' },
       { header: 'Ofensiva', accessor: (r) => r.streak },
-      { header: 'XP', accessor: (r) => r.xp },
+      { header: 'Pontos', accessor: (r) => r.pontos },
       { header: 'Nível', accessor: (r) => r.level },
       { header: 'Cadastro', accessor: (r) => new Date(r.created_at).toLocaleDateString('pt-BR') },
     ]);
@@ -129,7 +159,7 @@ export default function UsersList() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Usuários</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Usuários</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {table.total} usuários · paginação e busca no servidor, ações em massa e exportação.
           </p>
@@ -138,7 +168,7 @@ export default function UsersList() {
           variant="outline"
           size="sm"
           className="gap-1.5 h-9 text-xs"
-          onClick={() => exportRows(table.rows, 'usuarios-pagina')}
+          onClick={() => { void exportRows(table.rows, 'usuarios-pagina'); }}
           disabled={table.rows.length === 0}
         >
           <Download className="w-3.5 h-3.5" />
@@ -203,7 +233,7 @@ export default function UsersList() {
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 text-xs"
-              onClick={() => exportRows(Object.values(selected), 'usuarios-selecionados')}
+              onClick={() => { void exportRows(Object.values(selected), 'usuarios-selecionados'); }}
             >
               <Download className="w-3.5 h-3.5" />
               Exportar
@@ -216,7 +246,7 @@ export default function UsersList() {
       )}
 
       {/* Table */}
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-md overflow-hidden">
         {table.isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-7 h-7 animate-spin text-primary mr-2" />
@@ -234,7 +264,7 @@ export default function UsersList() {
                   <TableHead>Permissão</TableHead>
                   <TableHead>Coorte</TableHead>
                   <SortableHead label="Fogo" column="streak" activeColumn={table.sort.column} ascending={table.sort.ascending} onSort={table.toggleSort} className="text-center" />
-                  <SortableHead label="XP" column="xp" activeColumn={table.sort.column} ascending={table.sort.ascending} onSort={table.toggleSort} className="text-center" />
+                  <SortableHead label="Pontos" column="pontos" activeColumn={table.sort.column} ascending={table.sort.ascending} onSort={table.toggleSort} className="text-center" />
                   <SortableHead label="Nível" column="level" activeColumn={table.sort.column} ascending={table.sort.ascending} onSort={table.toggleSort} className="text-center" />
                   <TableHead className="text-right">Detalhes</TableHead>
                 </TableRow>
@@ -277,7 +307,7 @@ export default function UsersList() {
                         <span className="tabular-nums">{u.streak}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center font-semibold text-foreground tabular-nums">{u.xp}</TableCell>
+                    <TableCell className="text-center font-semibold text-foreground tabular-nums">{u.pontos}</TableCell>
                     <TableCell className="text-center">
                       <div className="inline-flex items-center gap-1 text-xs font-bold text-foreground">
                         <Award className="w-3.5 h-3.5 text-primary" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useConfirmar } from '@/components/admin/Confirmar';
 import { useSupabaseQuery, useSupabaseMutation } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -46,6 +47,7 @@ function getISOWeek() {
 export default function GamificationDashboard() {
   const { weekNumber, year } = getISOWeek();
   const { toast } = useToast();
+  const confirmar = useConfirmar();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBadge, setEditingBadge] = useState<any | null>(null);
 
@@ -62,13 +64,13 @@ export default function GamificationDashboard() {
       const { data, error } = await supabase
         .from('weekly_leaderboard')
         .select(`
-          xp_gained,
+          pontos_ganhos,
           rank,
           profiles(name, streak, level)
         `)
         .eq('year', year)
         .eq('week_number', weekNumber)
-        .order('xp_gained', { ascending: false });
+        .order('pontos_ganhos', { ascending: false });
       return { data, error };
     }
   );
@@ -190,8 +192,12 @@ export default function GamificationDashboard() {
     }
   );
 
-  const handleDelete = (id: string, label: string) => {
-    if (confirm(`Deseja realmente excluir a medalha de conquista "${label}"?`)) {
+  const handleDelete = async (id: string, label: string) => {
+    if (await confirmar({
+      titulo: 'Excluir medalha?',
+      descricao: `A medalha "${label}" some do catálogo de conquistas.`,
+      confirmar: 'Excluir', destrutivo: true,
+    })) {
       deleteBadge.mutate(id);
     }
   };
@@ -221,7 +227,7 @@ export default function GamificationDashboard() {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground font-sans">Gamificação</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Gamificação</h1>
           <p className="text-sm text-muted-foreground mt-1">Configuração de medalhas (badges) de conquistas e visualização dos rankings semanais.</p>
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold px-3.5 py-1.5 bg-secondary text-secondary-foreground rounded-lg border border-border">
@@ -232,7 +238,7 @@ export default function GamificationDashboard() {
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left Columns (Leaderboard Table) */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col">
+        <div className="lg:col-span-2 bg-card border border-border rounded-md p-6 flex flex-col">
           <h2 className="font-bold text-lg text-foreground border-b border-border pb-3 flex items-center gap-2 mb-6">
             <Trophy className="w-5 h-5 text-amber-500" />
             Ranking Semanal Completo (Leaderboard)
@@ -250,7 +256,7 @@ export default function GamificationDashboard() {
                   <TableHead className="w-16">Posição</TableHead>
                   <TableHead>Usuário</TableHead>
                   <TableHead className="text-center">Fogo (Streak)</TableHead>
-                  <TableHead className="text-right">XP Acumulado</TableHead>
+                  <TableHead className="text-right">Pontos acumulados</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -267,7 +273,7 @@ export default function GamificationDashboard() {
                       {item.profiles?.streak || 0} dias
                     </TableCell>
                     <TableCell className="text-right font-bold text-foreground">
-                      {item.xp_gained} XP
+                      {item.pontos_ganhos} pts
                     </TableCell>
                   </TableRow>
                 ))}
@@ -281,7 +287,7 @@ export default function GamificationDashboard() {
         </div>
 
         {/* Right Column (Badges Management) */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col">
+        <div className="bg-card border border-border rounded-md p-6 flex flex-col">
           <div className="flex items-center justify-between border-b border-border pb-3 mb-6">
             <h2 className="font-bold text-lg text-foreground flex items-center gap-2">
               <BadgeIcon className="w-5 h-5 text-primary" />
@@ -340,7 +346,7 @@ export default function GamificationDashboard() {
                         id="badge-challenge"
                         value={challengeId}
                         onChange={(e) => setChallengeId(e.target.value)}
-                        className="w-full h-10 px-3.5 py-1.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full h-10 px-3.5 py-1.5 rounded-md border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                         required
                       >
                         <option value="">Selecione...</option>

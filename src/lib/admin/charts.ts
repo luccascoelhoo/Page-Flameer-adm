@@ -5,14 +5,17 @@
  * palette tuned to the Flameer identity.
  */
 
+// SALA DE CONTROLE (17/08): paleta calibrada para o grafite dark-first —
+// o laranja Flameer lidera; as demais são séries frias de luminância média,
+// legíveis sobre escuro E sobre claro (o tema light é secundário).
 export const CHART_COLORS = {
-  primary: 'hsl(346 57% 32%)', // burgundy
-  tan: '#C89B6A',
-  gold: '#D9A521',
-  slate: '#6E7F8D',
-  teal: '#3F7A6A',
-  rose: '#A45D63',
-  indigo: '#5B6BA8',
+  primary: 'hsl(25 100% 50%)', // laranja Flameer
+  tan: '#D9A05B',
+  gold: '#E8B931',
+  slate: '#8A9BAC',
+  teal: '#4FA08A',
+  rose: '#C57783',
+  indigo: '#7C8BD0',
 } as const;
 
 /** Ordered categorical ramp for pies / multi-series charts. */
@@ -26,14 +29,15 @@ export const CATEGORICAL: string[] = [
   CHART_COLORS.indigo,
 ];
 
-/** Sequential burgundy ramp for heatmaps (light → dark). Index 0 = coldest. */
+/** Rampa sequencial de calor: superfície apagada → laranja aceso (a chama).
+    Index 0 = mais frio. Funciona sobre o grafite do tema principal. */
 export const HEAT_RAMP: string[] = [
-  'hsl(40 30% 92%)',
-  'hsl(346 40% 82%)',
-  'hsl(346 48% 66%)',
-  'hsl(346 55% 50%)',
-  'hsl(346 60% 38%)',
-  'hsl(346 65% 27%)',
+  'hsl(220 7% 14%)',
+  'hsl(25 45% 22%)',
+  'hsl(25 70% 30%)',
+  'hsl(25 90% 40%)',
+  'hsl(25 100% 50%)',
+  'hsl(35 100% 60%)',
 ];
 
 /** Map a 0..1 intensity onto the heat ramp. */

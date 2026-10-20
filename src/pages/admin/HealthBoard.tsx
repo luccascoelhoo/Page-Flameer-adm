@@ -24,7 +24,7 @@ export default function HealthBoard() {
             <HeartPulse className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Saúde e Prontidão</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Saúde e Prontidão</h1>
             <p className="text-sm text-muted-foreground">
               Wearables (Apple Health) · prontidão, recuperação e carga — só com consentimento.
             </p>

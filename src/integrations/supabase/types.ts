@@ -230,7 +230,7 @@ export type Database = {
           date: string
           current: number
           done: boolean
-          xp_gained: number
+          pontos_ganhos: number
           created_at: string | null
         }
         Insert: {
@@ -240,7 +240,7 @@ export type Database = {
           date?: string
           current?: number
           done?: boolean
-          xp_gained?: number
+          pontos_ganhos?: number
           created_at?: string | null
         }
         Update: {
@@ -250,7 +250,7 @@ export type Database = {
           date?: string
           current?: number
           done?: boolean
-          xp_gained?: number
+          pontos_ganhos?: number
           created_at?: string | null
         }
       }
@@ -367,7 +367,7 @@ export type Database = {
           completed_at: string | null
           elapsed_seconds: number
           total_volume_kg: number
-          xp_gained: number
+          pontos_ganhos: number
         }
         Insert: {
           id?: string
@@ -377,7 +377,7 @@ export type Database = {
           completed_at?: string | null
           elapsed_seconds?: number
           total_volume_kg?: number
-          xp_gained?: number
+          pontos_ganhos?: number
         }
         Update: {
           id?: string
@@ -387,7 +387,7 @@ export type Database = {
           completed_at?: string | null
           elapsed_seconds?: number
           total_volume_kg?: number
-          xp_gained?: number
+          pontos_ganhos?: number
         }
       }
       workout_adaptations: {
@@ -581,7 +581,7 @@ export type Database = {
           year: number
           week_number: number
           user_id: string
-          xp_gained: number
+          pontos_ganhos: number
           rank: number | null
           last_updated_at: string
         }
@@ -589,7 +589,7 @@ export type Database = {
           year: number
           week_number: number
           user_id: string
-          xp_gained?: number
+          pontos_ganhos?: number
           rank?: number | null
           last_updated_at?: string
         }
@@ -597,7 +597,7 @@ export type Database = {
           year?: number
           week_number?: number
           user_id?: string
-          xp_gained?: number
+          pontos_ganhos?: number
           rank?: number | null
           last_updated_at?: string
         }
@@ -606,17 +606,17 @@ export type Database = {
         Row: {
           user_id: string
           date: string
-          xp_gained: number
+          pontos_ganhos: number
         }
         Insert: {
           user_id: string
           date: string
-          xp_gained?: number
+          pontos_ganhos?: number
         }
         Update: {
           user_id?: string
           date?: string
-          xp_gained?: number
+          pontos_ganhos?: number
         }
       }
       badges: {

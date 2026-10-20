@@ -1,4 +1,12 @@
-project_id = "fmcsresbwnjdfwpoklwg"
+# ATENÇÃO: este project_id define para qual projeto Supabase o `supabase db push`
+# aplica as migrations. Estava apontando para "fmcsresbwnjdfwpoklwg", mas o app
+# usa "zgdfywlmlwcdfzxsgmjk" (ver Secrets.xcconfig e o usuário do banco). Migrations
+# rodadas com o valor antigo iriam para o projeto ERRADO. Confirme este ref no
+# painel do Supabase antes do primeiro push.
+project_id = "zgdfywlmlwcdfzxsgmjk"
 
 [functions.chat-mentor]
-verify_jwt = false
+# verify_jwt = true: a função exige um JWT válido do chamador. Estava false, o que
+# a deixava aberta a qualquer um na internet. Se a função não for mais usada,
+# apague o diretório functions/chat-mentor/ e este bloco.
+verify_jwt = true

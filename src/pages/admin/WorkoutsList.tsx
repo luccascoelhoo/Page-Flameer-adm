@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useConfirmar } from '@/components/admin/Confirmar';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +35,7 @@ import { cn } from '@/lib/utils';
 
 export default function WorkoutsList() {
   const { toast } = useToast();
+  const confirmar = useConfirmar();
   const actions = useContentActions('workouts');
   const [searchTerm, setSearchTerm] = useState('');
   const [focusFilter, setFocusFilter] = useState('all');
@@ -71,7 +73,11 @@ export default function WorkoutsList() {
   });
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Excluir o treino "${title}"? Exercícios e dias vinculados serão apagados.`)) return;
+    if (!await confirmar({
+      titulo: 'Excluir treino?',
+      descricao: `"${title}" e os exercícios e dias vinculados serão apagados.`,
+      confirmar: 'Excluir', destrutivo: true,
+    })) return;
     await actions.remove(id);
   };
 
@@ -83,7 +89,7 @@ export default function WorkoutsList() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Treinos</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Treinos</h1>
           <p className="text-sm text-muted-foreground mt-1">{rows.length} no banco · templates e planos vinculados a desafios.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -130,7 +136,7 @@ export default function WorkoutsList() {
         </select>
       </div>
 
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-md overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-7 h-7 animate-spin text-primary mr-2" />

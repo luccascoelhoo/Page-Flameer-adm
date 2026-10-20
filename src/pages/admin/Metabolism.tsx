@@ -76,11 +76,13 @@ export default function Metabolism() {
     queryKey: ['admin', 'metabolism', 'search', query],
     enabled: query.trim().length >= 2,
     queryFn: async () => {
-      const { data } = await sb
-        .from('profiles')
-        .select('id, name, avatar_url, gender, goal, height, weight, daily_routine, birth_year, cohort_group')
-        .ilike('name', `%${query}%`)
-        .limit(8);
+      // Via RPC: as colunas de saude de `profiles` deixaram de ser legiveis
+      // pelo papel `authenticated` para o peso de um usuario nao vazar para
+      // outro. A funcao valida role admin/professional antes de devolver.
+      const { data } = await (sb as any).rpc('admin_profile_search', {
+        p_query: query,
+        p_limit: 8,
+      });
       return (data ?? []) as any[];
     },
   });
@@ -132,7 +134,7 @@ export default function Metabolism() {
           <Flame className="w-5 h-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Calculadora Metabólica (TMB)</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Calculadora Metabólica (TMB)</h1>
           <p className="text-sm text-muted-foreground">
             Mifflin-St Jeor com idade real do perfil, TDEE e metas de macros para prescrição.
           </p>
@@ -143,7 +145,7 @@ export default function Metabolism() {
         {/* Inputs */}
         <div className="lg:col-span-3 space-y-5">
           {/* User picker */}
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+          <div className="bg-card border border-border rounded-md p-5">
             <div className="flex items-center gap-2 mb-3">
               <User className="w-4 h-4 text-primary" />
               <h3 className="font-bold text-sm text-foreground">Carregar dados de um usuário</h3>
@@ -178,18 +180,18 @@ export default function Metabolism() {
           </div>
 
           {/* Manual inputs */}
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
+          <div className="bg-card border border-border rounded-md p-5 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <Field label="Sexo">
-                <Segmented value={gender} onChange={setGender} options={[{ value: 'male', label: 'Masculino' }, { value: 'female', label: 'Feminino' }]} />
+                <Segmented value={gender} onChange={(v) => setGender(v as Gender)} options={[{ value: 'male', label: 'Masculino' }, { value: 'female', label: 'Feminino' }]} />
               </Field>
               <Field label="Objetivo">
-                <Segmented value={goal} onChange={setGoal} options={(['lose', 'maintain', 'gain'] as Goal[]).map((g) => ({ value: g, label: GOAL_LABEL[g].split(' ')[0] }))} />
+                <Segmented value={goal} onChange={(v) => setGoal(v as Goal)} options={(['lose', 'maintain', 'gain'] as Goal[]).map((g) => ({ value: g, label: GOAL_LABEL[g].split(' ')[0] }))} />
               </Field>
             </div>
 
             <Field label="Nível de atividade">
-              <Segmented value={activity} onChange={setActivity} options={(['sedentary', 'active', 'heavy'] as ActivityLevel[]).map((a) => ({ value: a, label: ACTIVITY_LABEL[a] }))} />
+              <Segmented value={activity} onChange={(v) => setActivity(v as ActivityLevel)} options={(['sedentary', 'active', 'heavy'] as ActivityLevel[]).map((a) => ({ value: a, label: ACTIVITY_LABEL[a] }))} />
             </Field>
 
             <div className="grid grid-cols-3 gap-4">
@@ -225,7 +227,7 @@ export default function Metabolism() {
 
         {/* Results */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+          <div className="bg-card border border-border rounded-md p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-sm text-foreground">Resultado</h3>
               <Button variant="outline" size="sm" className="h-7 gap-1.5 text-[11px]" onClick={copyPrescription}>
@@ -254,7 +256,7 @@ export default function Metabolism() {
           </div>
 
           {/* Macros */}
-          <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+          <div className="bg-card border border-border rounded-md p-5">
             <h3 className="font-bold text-sm text-foreground mb-4">Distribuição de macros</h3>
             <div className="flex h-2.5 w-full rounded-full overflow-hidden mb-4">
               {macroBar.map((m) => (

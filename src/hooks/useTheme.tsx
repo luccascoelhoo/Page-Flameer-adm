@@ -2,16 +2,22 @@ import { createContext, useContext, useEffect, useState } from "react";
 
 type Theme = "light" | "dark";
 
+const STORAGE_KEY = "flameer_admin_theme";
+
 const ThemeContext = createContext<{
   theme: Theme;
   toggle: () => void;
-}>({ theme: "light", toggle: () => {} });
+}>({ theme: "dark", toggle: () => {} });
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>("light");
+  // SALA DE CONTROLE (17/08): o painel é dark-first — :root do index.css JÁ
+  // é o tema escuro; o claro é opt-in via classe .light. A escolha persiste.
+  const [theme, setTheme] = useState<Theme>(() =>
+    (localStorage.getItem(STORAGE_KEY) as Theme) ?? "dark");
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.classList.toggle("light", theme === "light");
+    localStorage.setItem(STORAGE_KEY, theme);
   }, [theme]);
 
   const toggle = () => setTheme((t) => (t === "light" ? "dark" : "light"));

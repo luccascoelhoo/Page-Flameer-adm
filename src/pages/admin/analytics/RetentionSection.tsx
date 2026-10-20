@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { useRetentionCohorts, useChallengeFunnel } from '@/hooks/admin/useIntelligence';
 import { CHART_COLORS, tooltipStyle, axisStyle, heatColor } from '@/lib/admin/charts';
 import { downloadCsv } from '@/lib/admin/export';
+import type { FunnelChallenge } from '@/lib/admin/analytics';
 
 export default function RetentionSection() {
   const { data: cohorts, isLoading: loadingCohorts } = useRetentionCohorts(8);
@@ -23,7 +24,9 @@ export default function RetentionSection() {
 
   const exportFunnel = () => {
     if (!funnel) return;
-    downloadCsv('funil-desafios', funnel, [
+    // O hook devolve o funil como `unknown` (passa por tryRpc genérico); o
+    // tipo real é FunnelChallenge — nomeá-lo dá tipo aos acessores do CSV.
+    downloadCsv('funil-desafios', funnel as FunnelChallenge[], [
       { header: 'Desafio', accessor: (r) => r.title },
       { header: 'Inscritos', accessor: (r) => r.enrolled },
       { header: 'Ativos', accessor: (r) => r.active },

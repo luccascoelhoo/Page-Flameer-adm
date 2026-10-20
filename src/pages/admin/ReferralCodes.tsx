@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useConfirmar } from '@/components/admin/Confirmar';
 import { useSupabaseQuery, useSupabaseMutation } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -40,12 +41,12 @@ interface ReferralCode {
   challenge?: { id: string; title: string } | null;
   profiles: {
     name: string;
-    email: string;
   } | null;
 }
 
 export default function ReferralCodes() {
   const { toast } = useToast();
+  const confirmar = useConfirmar();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
@@ -69,7 +70,7 @@ export default function ReferralCodes() {
           id, code, expires_at, max_redemptions, redemptions_count,
           created_at, created_by, challenge_id,
           challenge:challenge_id ( id, title ),
-          profiles:created_by ( name, email )
+          profiles:created_by ( name )
         `)
         .order('created_at', { ascending: false });
 
@@ -80,7 +81,7 @@ export default function ReferralCodes() {
           .select(`
             id, code, expires_at, max_redemptions, redemptions_count,
             created_at, created_by,
-            profiles:created_by ( name, email )
+            profiles:created_by ( name )
           `)
           .order('created_at', { ascending: false });
         return { data: basic.data as any, error: basic.error };
@@ -119,7 +120,7 @@ export default function ReferralCodes() {
         referralData.challenge_id = payload.challenge_id;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('referral_codes')
         .insert([referralData]);
       return { data, error };
@@ -199,8 +200,12 @@ export default function ReferralCodes() {
     }, 2000);
   };
 
-  const handleDelete = (id: string, codeText: string) => {
-    if (window.confirm(`Deseja realmente excluir o código de indicação "${codeText}"?`)) {
+  const handleDelete = async (id: string, codeText: string) => {
+    if (await confirmar({
+      titulo: 'Excluir código de indicação?',
+      descricao: `O código "${codeText}" deixa de funcionar imediatamente.`,
+      confirmar: 'Excluir', destrutivo: true,
+    })) {
       deleteCode.mutate(id);
     }
   };
@@ -228,8 +233,12 @@ export default function ReferralCodes() {
     const term = searchTerm.toLowerCase();
     const codeMatch = c.code.toLowerCase().includes(term);
     const creatorNameMatch = c.profiles?.name?.toLowerCase().includes(term) ?? false;
-    const creatorEmailMatch = c.profiles?.email?.toLowerCase().includes(term) ?? false;
-    return codeMatch || creatorNameMatch || creatorEmailMatch;
+    // A busca por e-mail do criador saiu em 13/08 junto com a coluna: o
+    // `email` deixou de ser legível por `authenticated` (qualquer conta do app
+    // lia o e-mail de todo mundo). Quem criou o cupom continua identificado
+    // pelo nome, e o e-mail está a um clique no detalhe do usuário, que já
+    // passa por `admin_profile_detail` (SECURITY DEFINER, com portão).
+    return codeMatch || creatorNameMatch;
   });
 
   return (
@@ -237,7 +246,7 @@ export default function ReferralCodes() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <Gift className="w-8 h-8 text-primary" />
             Códigos de Indicação
           </h1>
@@ -256,7 +265,7 @@ export default function ReferralCodes() {
               Novo Código
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] bg-card border border-border rounded-xl">
+          <DialogContent className="sm:max-w-[425px] bg-card border border-border rounded-md">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
                 <Gift className="w-5 h-5 text-primary" />
@@ -361,7 +370,7 @@ export default function ReferralCodes() {
       <div className="relative">
         <Search className="absolute left-3 top-3 h-4.5 w-4.5 text-muted-foreground" />
         <Input
-          placeholder="Pesquisar por código ou criador (nome/email)..."
+          placeholder="Pesquisar por código ou nome do criador..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10 max-w-md border-border bg-card text-foreground focus:ring-primary"
@@ -369,7 +378,7 @@ export default function ReferralCodes() {
       </div>
 
       {/* Referral Codes Table */}
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-md overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" />
@@ -426,7 +435,6 @@ export default function ReferralCodes() {
                     {c.profiles ? (
                       <div>
                         <div className="font-semibold text-foreground">{c.profiles.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{c.profiles.email}</div>
                       </div>
                     ) : (
                       <span className="text-muted-foreground italic text-xs">Sistema</span>

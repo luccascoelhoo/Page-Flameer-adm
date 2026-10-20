@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useConfirmar } from '@/components/admin/Confirmar';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,6 +49,7 @@ const TIER_LABEL: Record<string, string> = {
 
 export default function ChallengesList() {
   const { toast } = useToast();
+  const confirmar = useConfirmar();
   const { profile } = useAdminAuth(false);
   const actions = useContentActions('challenges');
 
@@ -101,7 +103,17 @@ export default function ChallengesList() {
   }, [rows, search, statusTab, tierFilter, ownerOnly, profile]);
 
   const handleDelete = async (id: string, title: string) => {
-    if (!confirm(`Excluir o desafio "${title}"? Esta ação remove hábitos, treinos e dieta vinculados.`)) return;
+    // A frase antiga prometia cascata: "remove hábitos, treinos e dieta
+    // vinculados". Desde que `workouts`/`diets`/`habits` ganharam FK para
+    // `challenges` com ON DELETE RESTRICT, o oposto é verdade — o banco RECUSA
+    // enquanto houver conteúdo, e recusa de propósito: `challenge_id` nulo é o
+    // estado que abre o ramo social de `can_read_workout`, então apagar em
+    // cascata transformaria produto pago em conteúdo público.
+    if (!await confirmar({
+      titulo: `Excluir o desafio "${title}"?`,
+      descricao: 'O conteúdo vinculado NÃO é apagado junto — enquanto houver treino, dieta ou hábito ligado a ele, a exclusão é recusada pelo banco. Remova o conteúdo primeiro.',
+      confirmar: 'Excluir', destrutivo: true,
+    })) return;
     await actions.remove(id);
   };
 
@@ -142,7 +154,7 @@ export default function ChallengesList() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Desafios</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Desafios</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {rows.length} no banco · publique, pause, duplique e disponibilize para o app.
           </p>
@@ -229,7 +241,7 @@ export default function ChallengesList() {
             const themeColor = Array.isArray(c.theme_colors) && c.theme_colors[0] ? c.theme_colors[0] : '#6B1D2F';
 
             return (
-              <div key={c.id} className="group bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+              <div key={c.id} className="group bg-card border border-border rounded-md overflow-hidden flex flex-col">
                 {/* Cover */}
                 <div className="relative h-28 w-full overflow-hidden" style={{ background: themeColor }}>
                   {cover ? (
@@ -346,7 +358,7 @@ export default function ChallengesList() {
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-center px-4 bg-card border border-border rounded-xl">
+        <div className="flex flex-col items-center justify-center py-16 text-center px-4 bg-card border border-border rounded-md">
           <Info className="w-8 h-8 text-muted-foreground mb-3" />
           <h3 className="font-semibold text-lg text-foreground">Nenhum desafio encontrado</h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-sm">Ajuste os filtros ou crie um novo desafio.</p>
@@ -363,7 +375,7 @@ export default function ChallengesList() {
         type="challenge"
         onImport={async ({ parsedData }) => {
           try {
-            const { error } = await supabase.rpc('save_challenge_package', { p_payload: parsedData });
+            const { error } = await (supabase as any).rpc('save_challenge_package', { p_payload: parsedData });
             if (error) throw error;
             toast({ title: 'Sucesso!', description: 'Desafio completo importado (hábitos, treinos e dieta).' });
             refetch();

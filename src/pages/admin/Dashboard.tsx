@@ -55,7 +55,7 @@ export default function Dashboard() {
     async () => {
       const { count, error } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
       return { data: count, error };
     }
   );
@@ -66,7 +66,7 @@ export default function Dashboard() {
     async () => {
       const { count, error } = await supabase
         .from('challenges')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
       return { data: count, error };
     }
   );
@@ -77,7 +77,7 @@ export default function Dashboard() {
     async () => {
       const { count, error } = await supabase
         .from('workouts')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('is_template', true);
       return { data: count, error };
     }
@@ -89,7 +89,7 @@ export default function Dashboard() {
     async () => {
       const { count, error } = await supabase
         .from('user_reports')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'pending');
       return { data: count, error };
     }
@@ -121,13 +121,13 @@ export default function Dashboard() {
       const { data, error } = await supabase
         .from('weekly_leaderboard')
         .select(`
-          xp_gained,
+          pontos_ganhos,
           rank,
           profiles(name, avatar_url, streak)
         `)
         .eq('year', year)
         .eq('week_number', weekNumber)
-        .order('xp_gained', { ascending: false })
+        .order('pontos_ganhos', { ascending: false })
         .limit(5);
       return { data, error };
     }
@@ -336,7 +336,7 @@ export default function Dashboard() {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground font-sans">Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">Visão integrada das operações do Flameer.</p>
         </div>
         <div className="flex items-center gap-2 text-xs font-semibold px-3.5 py-1.5 bg-secondary text-secondary-foreground rounded-lg border border-border">
@@ -348,7 +348,7 @@ export default function Dashboard() {
       {/* Stats Summary Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-card border border-border rounded-xl p-6 shadow-sm transition-all duration-200 hover:shadow-md">
+          <div key={i} className="bg-card border border-border rounded-md p-6 transition-all duration-200 hover:shadow-md">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{stat.title}</span>
               <div className={`p-2 rounded-lg ${stat.color}`}>
@@ -359,7 +359,7 @@ export default function Dashboard() {
               {stat.loading ? (
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               ) : (
-                <span className="text-3xl font-bold text-foreground tracking-tight">{stat.value}</span>
+                <span className="text-2xl font-bold text-foreground tracking-tight">{stat.value}</span>
               )}
             </div>
           </div>
@@ -369,7 +369,7 @@ export default function Dashboard() {
       {/* Analytics & Segmentos Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Peak Hours accesses */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-card border border-border rounded-md p-6 flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-sm text-foreground uppercase tracking-wider mb-1">Horários de Pico de Acesso</h3>
             <p className="text-xs text-muted-foreground mb-4">Acessos com base em treinos e alimentação.</p>
@@ -388,7 +388,7 @@ export default function Dashboard() {
         </div>
 
         {/* User cohorts/segments */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-card border border-border rounded-md p-6 flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-sm text-foreground uppercase tracking-wider mb-1">Segmentação por Coortes</h3>
             <p className="text-xs text-muted-foreground mb-4">Distribuição de alunos por grupo do questionário.</p>
@@ -421,7 +421,7 @@ export default function Dashboard() {
         </div>
 
         {/* Consistency metrics & biomechanics pain points */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-card border border-border rounded-md p-6 flex flex-col justify-between">
           <div>
             <h3 className="font-bold text-sm text-foreground uppercase tracking-wider mb-1">Indicadores Operacionais</h3>
             <p className="text-xs text-muted-foreground mb-4">Consistência e dificuldades observadas.</p>
@@ -464,7 +464,7 @@ export default function Dashboard() {
       {/* Lower Dashboard Grid */}
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Left Column: Recent reports */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col">
+        <div className="lg:col-span-2 bg-card border border-border rounded-md p-6 flex flex-col">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
             <div className="flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-destructive" />
@@ -506,7 +506,7 @@ export default function Dashboard() {
         </div>
 
         {/* Right Column: Leaderboard top list */}
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col">
+        <div className="bg-card border border-border rounded-md p-6 flex flex-col">
           <div className="flex items-center gap-2 mb-6 pb-4 border-b border-border">
             <Award className="w-5 h-5 text-amber-500" />
             <h2 className="font-bold text-lg text-foreground">Leaderboard da Semana</h2>
@@ -539,9 +539,9 @@ export default function Dashboard() {
                       <p className="text-xs font-semibold text-foreground truncate">{player.profiles?.name}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">Fogo: {player.profiles?.streak || 0} dias</p>
                     </div>
-                    {/* XP gained */}
+                    {/* pontos ganhos */}
                     <div className="text-right">
-                      <span className="text-xs font-bold text-foreground">{player.xp_gained} XP</span>
+                      <span className="text-xs font-bold text-foreground">{player.pontos_ganhos} pts</span>
                     </div>
                   </div>
                 ))}

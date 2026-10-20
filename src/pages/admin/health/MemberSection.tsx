@@ -90,7 +90,7 @@ export default function MemberSection({ userId, onBack }: { userId: string; onBa
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center bg-card border border-border rounded-xl">
+      <div className="flex flex-col items-center justify-center py-20 text-center bg-card border border-border rounded-md">
         <ShieldOff className="w-9 h-9 text-muted-foreground mb-3" />
         <h3 className="font-semibold text-foreground">Sem acesso aos dados deste membro</h3>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
@@ -166,7 +166,7 @@ export default function MemberSection({ userId, onBack }: { userId: string; onBa
       </div>
 
       {/* Narrative */}
-      <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+      <div className="bg-card border border-border rounded-md p-4">
         <p className="text-sm text-foreground">{readiness.narrative}</p>
         {readiness.flags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2">
@@ -180,7 +180,7 @@ export default function MemberSection({ userId, onBack }: { userId: string; onBa
       </div>
 
       {series.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center bg-card border border-border rounded-xl">
+        <div className="flex flex-col items-center justify-center py-16 text-center bg-card border border-border rounded-md">
           <Watch className="w-9 h-9 text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground">Sem dados sincronizados para este membro.</p>
         </div>
@@ -192,6 +192,28 @@ export default function MemberSection({ userId, onBack }: { userId: string; onBa
             <VitalSpark title="HRV" unit="ms" data={series} dataKey="hrv" color={CHART_COLORS.primary} />
             <VitalSpark title="Freq. respiratória" unit="rpm" data={series} dataKey="respiratory_rate" color={CHART_COLORS.teal} />
             <VitalSpark title="SpO₂" unit="" data={series} dataKey="spo2" color={CHART_COLORS.indigo} />
+          </div>
+
+          {/*
+            Composição corporal e VO2 máx. — lidos do Health Connect/HealthKit há
+            meses (READ_WEIGHT, READ_BODY_FAT, READ_VO2_MAX) mas nunca desenhados
+            em tela nenhuma (medido em JUSTIFICATIVAS_DE_SAUDE.md, 31/08/2026:
+            "permissão sem função visível", motivo comum de reprovação do
+            formulário de dados de saúde do Google Play). Ligados em 21/09/2026.
+            `body_fat_pct` chega como fração (0-1) do banco — ver o comentário de
+            conversão em SincroniaDeSaude.kt — por isso ×100 aqui.
+          */}
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+            <VitalSpark title="Peso" unit="kg" data={series} dataKey="body_mass_kg" color={CHART_COLORS.teal} />
+            <VitalSpark
+              title="% Gordura"
+              unit="%"
+              data={series.map((r: any) => ({ ...r, body_fat_pct_100: r.body_fat_pct != null ? r.body_fat_pct * 100 : null }))}
+              dataKey="body_fat_pct_100"
+              color={CHART_COLORS.indigo}
+            />
+            <VitalSpark title="VO2 máx." unit="ml/kg/min" data={series} dataKey="vo2max" color={CHART_COLORS.primary} />
+            <VitalSpark title="Energia basal" unit="kcal" data={series} dataKey="basal_energy_kcal" color={CHART_COLORS.rose} />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useConfirmar } from '@/components/admin/Confirmar';
 import { useSupabaseQuery, useSupabaseMutation } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -30,6 +31,7 @@ interface HabitFormState {
 
 export default function HabitTemplates() {
   const { toast } = useToast();
+  const confirmar = useConfirmar();
   const [selectedChallengeId, setSelectedChallengeId] = useState<string>('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<HabitFormState | null>(null);
@@ -186,8 +188,12 @@ export default function HabitTemplates() {
     }
   );
 
-  const handleDelete = (id: string, label: string) => {
-    if (confirm(`Excluir o hábito-modelo "${label}" deste desafio?`)) {
+  const handleDelete = async (id: string, label: string) => {
+    if (await confirmar({
+      titulo: 'Excluir hábito-modelo?',
+      descricao: `"${label}" sai deste desafio. Hábitos já copiados pelos alunos não são afetados.`,
+      confirmar: 'Excluir', destrutivo: true,
+    })) {
       deleteHabit.mutate(id);
     }
   };
@@ -212,7 +218,7 @@ export default function HabitTemplates() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground font-sans">Modelos de Hábitos</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Modelos de Hábitos</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Cadastre os hábitos que serão cobrados e injetados na lista dos usuários ao entrarem em cada desafio.
           </p>
@@ -251,7 +257,7 @@ export default function HabitTemplates() {
                     id="kind"
                     value={kind}
                     onChange={(e: any) => setKind(e.target.value)}
-                    className="w-full h-10 px-3.5 py-1.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full h-10 px-3.5 py-1.5 rounded-md border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                   >
                     <option value="single">Marcador Simples</option>
                     <option value="units">Por Unidades</option>
@@ -329,7 +335,7 @@ export default function HabitTemplates() {
       </div>
 
       {/* Select Challenge Selector */}
-      <div className="flex items-center gap-3 bg-card border border-border rounded-xl p-5 shadow-sm">
+      <div className="flex items-center gap-3 bg-card border border-border rounded-md p-5">
         <Trophy className="w-5 h-5 text-amber-500 shrink-0" />
         <Label htmlFor="challenge-select" className="font-semibold text-sm text-foreground shrink-0">Selecione o Desafio:</Label>
         {loadingChallenges ? (
@@ -339,7 +345,7 @@ export default function HabitTemplates() {
             id="challenge-select"
             value={selectedChallengeId}
             onChange={(e) => setSelectedChallengeId(e.target.value)}
-            className="flex-1 max-w-md h-10 px-3.5 py-1.5 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="flex-1 max-w-md h-10 px-3.5 py-1.5 rounded-md border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           >
             {challenges?.map((c) => (
               <option key={c.id} value={c.id}>{c.title}</option>
@@ -356,7 +362,7 @@ export default function HabitTemplates() {
         </h2>
 
         {loadingHabits ? (
-          <div className="flex items-center justify-center py-20 bg-card border border-border rounded-xl">
+          <div className="flex items-center justify-center py-20 bg-card border border-border rounded-md">
             <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" />
             <span className="text-sm text-muted-foreground font-medium">Carregando hábitos do desafio...</span>
           </div>
@@ -365,7 +371,7 @@ export default function HabitTemplates() {
             {habits.map((h) => (
               <div 
                 key={h.id} 
-                className="bg-card border border-border rounded-xl p-5 shadow-sm relative flex flex-col justify-between hover:shadow-md transition-all duration-200"
+                className="bg-card border border-border rounded-md p-5 relative flex flex-col justify-between hover:shadow-md transition-all duration-200"
               >
                 <div>
                   <div className="flex items-center gap-2.5">
@@ -405,7 +411,7 @@ export default function HabitTemplates() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-card border border-border rounded-xl px-4">
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-card border border-border rounded-md px-4">
             <Info className="w-8 h-8 text-muted-foreground mb-3" />
             <h3 className="font-semibold text-lg text-foreground">Sem hábitos associados</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-sm">

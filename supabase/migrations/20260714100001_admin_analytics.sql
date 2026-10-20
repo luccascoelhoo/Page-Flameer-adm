@@ -14,7 +14,21 @@
 create index if not exists workout_logs_date_idx on public.workout_logs (date);
 create index if not exists diet_logs_date_idx on public.diet_logs (date);
 create index if not exists daily_habit_logs_date_idx on public.daily_habit_logs (date);
-create index if not exists challenge_enrollments_challenge_idx on public.challenge_enrollments (challenge_id);
+-- `challenge_enrollments` é uma tabela paralela que este banco NÃO tem — aqui a
+-- inscrição vive em `challenge_participants`, cuja PK composta
+-- (challenge_id, user_id) já serve de índice por challenge_id, tornando um
+-- índice extra redundante. A versão anterior criava o índice sem checar, e o
+-- "relation does not exist" derrubava a migration inteira. As FUNÇÕES deste
+-- arquivo já escolhem a tabela certa em tempo de execução (ver v_table), então
+-- só o DDL estático precisava da guarda. Verificado no banco real em 27/07/2026.
+do $$
+begin
+    if exists (select 1 from information_schema.tables
+                where table_schema = 'public' and table_name = 'challenge_enrollments') then
+        create index if not exists challenge_enrollments_challenge_idx
+            on public.challenge_enrollments (challenge_id);
+    end if;
+end $$;
 create index if not exists profiles_created_idx on public.profiles (created_at);
 
 -- ----------------------------------------------------------------------------

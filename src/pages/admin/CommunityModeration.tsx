@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useConfirmar } from '@/components/admin/Confirmar';
 import { useSupabaseQuery, useSupabaseMutation } from '@/hooks/useSupabaseQuery';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -28,6 +29,7 @@ import {
 
 export default function CommunityModeration() {
   const { toast } = useToast();
+  const confirmar = useConfirmar();
   const [activeSubTab, setActiveSubTab] = useState<'posts' | 'checkins'>('posts');
   const [filter, setFilter] = useState<'pending' | 'resolved' | 'dismissed'>('pending');
 
@@ -93,12 +95,24 @@ export default function CommunityModeration() {
   // Delete reported post/comment mutation
   const deleteContent = useSupabaseMutation<any, any>(
     async ({ type, contentId, reportId }) => {
+      // `.select()` no delete devolve as linhas removidas. Sem ele, um DELETE
+      // barrado pela RLS não vira erro — ele casa ZERO linhas e volta com
+      // sucesso, e o painel avisava "Conteúdo Excluído" com o post intacto no
+      // app. Zero linhas aqui é falha explícita.
       if (type === 'post') {
-        const { error } = await supabase.from('posts').delete().eq('id', contentId);
+        const { data, error } = await supabase
+          .from('posts').delete().eq('id', contentId).select('id');
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('A publicação não foi removida — seu usuário não tem permissão de moderação no banco.');
+        }
       } else if (type === 'comment') {
-        const { error } = await supabase.from('post_comments').delete().eq('id', contentId);
+        const { data, error } = await supabase
+          .from('post_comments').delete().eq('id', contentId).select('id');
         if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error('O comentário não foi removido — seu usuário não tem permissão de moderação no banco.');
+        }
       }
       const { error: reportError } = await (supabase as any)
         .from('user_reports')
@@ -134,19 +148,11 @@ export default function CommunityModeration() {
     ['admin', 'checkins', 'reported'],
     async () => {
       const { data, error } = await supabase
-        .from('challenge_checkins')
-        .select(`
-          id,
-          photo_storage_path,
-          points_awarded,
-          status,
-          checkin_date,
-          created_at,
-          user:profiles!challenge_checkins_user_id_fkey(name),
-          challenge:challenges(id, title)
-        `)
-        .eq('status', 'reported')
-        .order('created_at', { ascending: false });
+        // `challenge_checkins` NÃO EXISTE. A tabela é `challenge_daily_logs`,
+        // e ela não tem policy de UPDATE nenhuma — os botões abaixo afetavam
+        // zero linhas em silêncio. A moderação agora entra pela mesma porta que
+        // o resto desta tabela: RPC SECURITY DEFINER com guarda is_admin().
+        .rpc('admin_checkins_denunciados');
       return { data, error };
     },
     {
@@ -157,10 +163,8 @@ export default function CommunityModeration() {
   // Approve reported photo checkin (validates it, set back to 'valid')
   const approveCheckin = useSupabaseMutation<any, any>(
     async (id: string) => {
-      const { error } = await supabase
-        .from('challenge_checkins')
-        .update({ status: 'valid' } as any)
-        .eq('id', id);
+      const { error } = await (supabase as any)
+        .rpc('admin_moderar_checkin', { p_log_id: id, p_status: 'valid' });
       if (error) throw error;
       return { data: null, error: null };
     },
@@ -185,10 +189,8 @@ export default function CommunityModeration() {
   // Invalidate reported photo checkin (marks it 'invalid' -> trigger auto estorna points & streak)
   const invalidateCheckin = useSupabaseMutation<any, any>(
     async (id: string) => {
-      const { error } = await supabase
-        .from('challenge_checkins')
-        .update({ status: 'invalid' } as any)
-        .eq('id', id);
+      const { error } = await (supabase as any)
+        .rpc('admin_moderar_checkin', { p_log_id: id, p_status: 'invalid' });
       if (error) throw error;
       return { data: null, error: null };
     },
@@ -196,7 +198,7 @@ export default function CommunityModeration() {
       onSuccess: () => {
         toast({
           title: "Check-in Invalidado 🚫",
-          description: "A foto foi rejeitada, os pontos foram estornados e o streak do participante zerado.",
+          description: "A foto foi rejeitada, os pontos foram estornados e a ofensiva recalculada a partir dos check-ins válidos.",
         });
         refetchCheckins();
       },
@@ -218,8 +220,12 @@ export default function CommunityModeration() {
     resolveReport.mutate({ id, status });
   };
 
-  const handleDeleteContent = (type: 'post' | 'comment', contentId: string, reportId: string) => {
-    if (confirm(`Tem certeza que deseja excluir este ${type === 'post' ? 'post' : 'comentário'} permanentemente?`)) {
+  const handleDeleteContent = async (type: 'post' | 'comment', contentId: string, reportId: string) => {
+    if (await confirmar({
+      titulo: type === 'post' ? 'Excluir post permanentemente?' : 'Excluir comentário permanentemente?',
+      descricao: 'A exclusão é definitiva e recalcula o dia do autor. Não há como desfazer.',
+      confirmar: 'Excluir', destrutivo: true,
+    })) {
       deleteContent.mutate({ type, contentId, reportId });
     }
   };
@@ -228,7 +234,7 @@ export default function CommunityModeration() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-foreground font-sans">Moderação do Ecossistema</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">Moderação do Ecossistema</h1>
         <p className="text-sm text-muted-foreground mt-1">Gerencie denúncias de posts, comentários e comprovações de fotos de check-in.</p>
       </div>
 
@@ -290,7 +296,7 @@ export default function CommunityModeration() {
           </div>
 
           {/* Table */}
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-card border border-border rounded-md overflow-hidden">
             {isLoadingReports ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" />
@@ -433,7 +439,7 @@ export default function CommunityModeration() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-card border border-border rounded-md overflow-hidden">
             {isLoadingCheckins ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" />
@@ -455,12 +461,12 @@ export default function CommunityModeration() {
                     <TableRow key={checkin.id}>
                       {/* Athlete name */}
                       <TableCell className="font-semibold text-foreground">
-                        {checkin.user?.name || 'Recruta'}
+                        {checkin.user_name || 'Recruta'}
                       </TableCell>
 
                       {/* Challenge Title */}
                       <TableCell className="font-medium text-foreground">
-                        {checkin.challenge?.title || 'Desafio Desconhecido'}
+                        {checkin.challenge_title || 'Desafio Desconhecido'}
                       </TableCell>
 
                       {/* Date of check-in */}
@@ -473,7 +479,7 @@ export default function CommunityModeration() {
 
                       {/* Lazily loaded private image check-in preview */}
                       <TableCell className="py-2">
-                        <CheckinPhoto path={checkin.photo_storage_path} />
+                        <CheckinPhoto path={checkin.photo_url} />
                       </TableCell>
 
                       {/* Actions */}
@@ -494,7 +500,7 @@ export default function CommunityModeration() {
                             variant="destructive" 
                             size="sm"
                             onClick={() => {
-                              if (confirm('Atenção: Invalidar esta foto irá estornar 100 pontos e resetar o streak do participante para zero. Prosseguir?')) {
+                              if (confirm(`Atenção: invalidar esta foto vai estornar ${checkin.points_earned ?? 0} pontos e recalcular a ofensiva do participante a partir dos check-ins válidos. Prosseguir?`)) {
                                 invalidateCheckin.mutate(checkin.id);
                               }
                             }}

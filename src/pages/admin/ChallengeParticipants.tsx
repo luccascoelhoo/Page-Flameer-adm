@@ -60,7 +60,7 @@ export default function ChallengeParticipants() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground font-sans">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground font-sans">
             Participantes
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -70,7 +70,7 @@ export default function ChallengeParticipants() {
       </div>
 
       {/* Participants Table */}
-      <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-md overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary mr-2" />

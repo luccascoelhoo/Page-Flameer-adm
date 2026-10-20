@@ -143,7 +143,7 @@ export function useUserAggregates(periodDays: number) {
       const [profiles, workouts, diets, habits, enrollments] = await Promise.all([
         sb
           .from('profiles')
-          .select('id, name, avatar_url, level, xp, streak, last_active_at, created_at'),
+          .select('id, name, avatar_url, level, pontos, streak, last_active_at, created_at'),
         sb.from('workout_logs').select('user_id, date').gte('date', fromIso),
         sb.from('diet_logs').select('user_id, date').gte('date', fromIso),
         sb.from('daily_habit_logs').select('user_id, done, date').gte('date', fromIso),
@@ -192,7 +192,7 @@ export function useUserAggregates(periodDays: number) {
           name: p.name ?? 'Sem nome',
           avatar_url: p.avatar_url ?? null,
           level: p.level ?? 0,
-          xp: p.xp ?? 0,
+          pontos: p.pontos ?? 0,
           streak: p.streak ?? 0,
           workouts: wMap.get(p.id) ?? 0,
           diets: dMap.get(p.id) ?? 0,

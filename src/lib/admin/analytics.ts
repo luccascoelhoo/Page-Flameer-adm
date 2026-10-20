@@ -250,7 +250,9 @@ export interface UserAggregate {
   name: string;
   avatar_url: string | null;
   level: number;
-  xp: number;
+  /// Renomeado em 12/08 junto com o banco (profiles.xp → profiles.pontos):
+  /// a RPC admin_user_aggregates devolve a chave `pontos`.
+  pontos: number;
   streak: number;
   workouts: number;
   diets: number;
@@ -265,7 +267,7 @@ export interface UserFacet {
   workoutFreq: number;
   dietFreq: number;
   streak: number;
-  progression: number; // xp
+  progression: number; // pontos
   recency: number; // higher = more recent
 }
 
@@ -281,7 +283,7 @@ export function buildUserVectors(aggregates: UserAggregate[]): FeatureVector<Use
         a.workouts,
         a.diets,
         a.streak,
-        a.xp,
+        a.pontos,
         recency,
       ],
     };
@@ -299,7 +301,7 @@ export function describeCluster(members: UserAggregate[]): {
   const diets = mean(members.map((m) => m.diets));
   const streak = mean(members.map((m) => m.streak));
   const recency = mean(members.map((m) => m.daysSinceActive));
-  const xp = mean(members.map((m) => m.xp));
+  const pontos = mean(members.map((m) => m.pontos));
 
   const traits: string[] = [];
   traits.push(`Aderência ${Math.round(adherence * 100)}%`);
@@ -313,7 +315,7 @@ export function describeCluster(members: UserAggregate[]): {
   else if (adherence > 0.7 && streak > 7) label = 'Embaixadores engajados';
   else if (workouts > diets * 1.5) label = 'Focados em treino';
   else if (diets > workouts * 1.5) label = 'Focados em nutrição';
-  else if (xp < mean(members.map((m) => m.xp)) * 0.5) label = 'Iniciantes';
+  else if (pontos < mean(members.map((m) => m.pontos)) * 0.5) label = 'Iniciantes';
   else label = 'Consistentes equilibrados';
 
   return { label, traits };

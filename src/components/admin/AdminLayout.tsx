@@ -1,11 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import AdminSidebar from './AdminSidebar';
+import AdminTopbar from './AdminTopbar';
 import { Loader2 } from 'lucide-react';
+
+const COLAPSO_KEY = 'flameer_admin_sidebar_colapsada';
 
 export default function AdminLayout() {
   const { profile, loading, isAdmin } = useAdminAuth(true);
+
+  // Sidebar colapsável (J1 · 17/08): em tela cheia de tabela densa, os 256px
+  // do menu valem mais como dado. A escolha persiste por aparelho.
+  const [colapsada, setColapsada] = useState(
+    () => localStorage.getItem(COLAPSO_KEY) === '1');
+  useEffect(() => {
+    localStorage.setItem(COLAPSO_KEY, colapsada ? '1' : '0');
+  }, [colapsada]);
 
   if (loading) {
     return (
@@ -24,12 +35,16 @@ export default function AdminLayout() {
   return (
     <div className="flex min-h-screen bg-background font-sans">
       {/* Navigation Sidebar */}
-      <AdminSidebar profile={profile} />
+      <AdminSidebar profile={profile} colapsada={colapsada} />
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-x-hidden flex flex-col">
+      <main className="flex-1 overflow-x-hidden flex flex-col min-w-0">
+        <AdminTopbar
+          sidebarColapsada={colapsada}
+          onToggleSidebar={() => setColapsada((c) => !c)}
+        />
         {/* Main Content Render */}
-        <div className="flex-1 p-8 max-w-7xl w-full mx-auto">
+        <div className="flex-1 p-6 lg:p-8 max-w-[1600px] w-full mx-auto">
           <Outlet />
         </div>
       </main>
